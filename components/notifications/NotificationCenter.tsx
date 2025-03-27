@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSocket } from "@/lib/socket"
 import { BellIcon } from "@heroicons/react/24/outline"
 import { motion, AnimatePresence } from "framer-motion"
@@ -23,66 +23,68 @@ interface Notification {
 
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false)
-  const { socket, isConnected } = useSocket()
+  const { socket } = useSocket()
   const { user } = useAuth()
   const queryClient = useQueryClient()
 
-  const { data: notifications = [], refetch } = useQuery<Notification[]>(
-      ["notifications"],
-      async () => {
-        try {
-          const response = await axios.get("/notifications")
-          return response.data.data
-        } catch (error) {
-          console.error("Error fetching notifications:", error)
-          return []
-        }
-      },
-      {
-        enabled: !!user,
-        refetchOnWindowFocus: false,
+  const { data: notifications = [], refetch } = useQuery<Notification[]>({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      try {
+        const response = await axios.get("/notifications")
+        return response.data.data
+      } catch (error) {
+        console.error("Error fetching notifications:", error)
+        return []
       }
-  )
+    },
+    enabled: !!user,
+    refetchOnWindowFocus: false,
+  })
 
-  const unreadCount = notifications.filter((n) => !n.read).length
+  const unreadCount = notifications?.filter((n) => !n.read).length || 0
 
   useEffect(() => {
-    if (socket && user) {
-      const handleNewNotification = (notification: Notification) => {
-        queryClient.setQueryData<Notification[]>(["notifications"], (old = []) => {
-          return [notification, ...old]
-        })
-      }
+    if (!socket || !user) return
 
-      socket.on("notification", handleNewNotification)
+    const handleNewNotification = (notification: Notification) => {
+      queryClient.setQueryData<Notification[]>(["notifications"], (old = []) => [
+        notification,
+        ...old,
+      ])
+    }
 
-      return () => {
-        socket.off("notification", handleNewNotification)
-      }
+    socket.on("notification", handleNewNotification)
+
+    return () => {
+      socket.off("notification", handleNewNotification)
     }
   }, [socket, user, queryClient])
 
-  const markAsRead = async (id: string) => {
-    try {
-      await axios.put(`/notifications/${id}/read`)
-      queryClient.setQueryData<Notification[]>(["notifications"], (old = []) => {
-        return old.map((n) => (n.id === id ? { ...n, read: true } : n))
-      })
-    } catch (error) {
-      console.error("Error marking notification as read:", error)
-    }
-  }
+  const markAsRead = useCallback(
+      async (id: string) => {
+        try {
+          await axios.put(`/notifications/${id}/read`)
+          queryClient.setQueryData<Notification[]>(["notifications"], (old = []) =>
+              old.map((n) => (n.id === id ? { ...n, read: true } : n))
+          )
+        } catch (error) {
+          console.error("Error marking notification as read:", error)
+        }
+      },
+      [queryClient]
+  )
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       await axios.put("/notifications/read-all")
-      queryClient.setQueryData<Notification[]>(["notifications"], (old = []) => {
-        return old.map((n) => ({ ...n, read: true }))
-      })
+      queryClient.setQueryData<Notification[]>(["notifications"], (old = []) =>
+          old.map((n) => ({ ...n, read: true }))
+      )
     } catch (error) {
       console.error("Error marking all notifications as read:", error)
     }
-  }
+  }, [queryClient])
 
   return (
       <div className="relative">
@@ -109,7 +111,10 @@ export default function NotificationCenter() {
                 <div className="p-4 border-b border-gray-700 flex justify-between items-center">
                   <h3 className="text-lg font-medium text-white">Notifications</h3>
                   {unreadCount > 0 && (
-                      <button onClick={markAllAsRead} className="text-sm text-gray-300 hover:text-white">
+                      <button
+                          onClick={markAllAsRead}
+                          className="text-sm text-gray-300 hover:text-white"
+                      >
                         Tout marquer comme lu
                       </button>
                   )}
