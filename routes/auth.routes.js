@@ -8,6 +8,7 @@ import {
   forgotPassword,
   resetPassword,
 } from "../controllers/auth.controller.js"
+import { googleAuth, googleCallback } from "../controllers/google-auth.controller.js"
 import { protect } from "../middleware/auth.middleware.js"
 
 const router = express.Router()
@@ -20,5 +21,8 @@ router.put("/updatepassword", protect, updatePassword)
 router.post("/forgotpassword", forgotPassword)
 router.put("/resetpassword/:resettoken", resetPassword)
 
-export default router
+// Routes Google OAuth
+router.get("/google", googleAuth)
+router.get("/google/callback", googleCallback)
 
+export default router
