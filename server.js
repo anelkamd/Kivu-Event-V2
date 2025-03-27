@@ -14,6 +14,7 @@ import authRoutes from "./routes/auth.routes.js"
 import venueRoutes from "./routes/venue.routes.js"
 import speakerRoutes from "./routes/speaker.routes.js"
 import participantRoutes from "./routes/participant.routes.js"
+import paymentRoutes from "./routes/payment.routes.js"
 
 // Middlewares
 import { errorHandler } from "./middleware/error.middleware.js"
@@ -37,6 +38,7 @@ app.use(compression()) // Compression des réponses
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
+
 // Logging en développement
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"))
@@ -51,6 +53,7 @@ app.use("/api/auth", authRoutes)
 app.use("/api/venues", venueRoutes)
 app.use("/api/speakers", speakerRoutes)
 app.use("/api/participants", participantRoutes)
+app.use("/api/payments", paymentRoutes)
 
 // Route de base
 app.get("/", (req, res) => {
