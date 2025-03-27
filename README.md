@@ -28,3 +28,4 @@ Application de gestion des événements d'entreprise (organisation des séminair
 git clone https://github.com/votre-utilisateur/kivu-event-frontend.git
 cd kivu-event-frontend
 
+http://localhost:5000/api/auth/google/callback
