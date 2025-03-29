@@ -1,64 +1,92 @@
-import mongoose from "mongoose"
+import { DataTypes } from "sequelize"
+import { v4 as uuidv4 } from "uuid"
+import { sequelize } from "../config/database.js"
 
-const participantSchema = new mongoose.Schema(
-  {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "L'utilisateur est requis"],
-    },
-    events: [
-      {
-        event: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Event",
-          required: true,
+const Participant = sequelize.define(
+    "Participant",
+    {
+        id: {
+            type: DataTypes.STRING,
+            primaryKey: true,
+            defaultValue: () => uuidv4(),
+        },
+        userId: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            field: "user_id",
+            references: {
+                model: "users",
+                key: "id",
+            },
+        },
+        eventId: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            field: "event_id",
+            references: {
+                model: "events",
+                key: "id",
+            },
         },
         registrationDate: {
-          type: Date,
-          default: Date.now,
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW,
+            field: "registration_date",
         },
         status: {
-          type: String,
-          enum: ["registered", "attended", "cancelled", "no-show"],
-          default: "registered",
+            type: DataTypes.ENUM("registered", "attended", "cancelled", "no-show"),
+            defaultValue: "registered",
         },
-        feedback: {
-          rating: {
-            type: Number,
-            min: 1,
-            max: 5,
-          },
-          comment: String,
-          submittedAt: Date,
+        company: {
+            type: DataTypes.STRING(100),
         },
-      },
-    ],
-    company: {
-      type: String,
-      trim: true,
+        jobTitle: {
+            type: DataTypes.STRING(100),
+            field: "job_title",
+        },
+        dietaryRestrictions: {
+            type: DataTypes.STRING(255),
+            field: "dietary_restrictions",
+        },
+        specialRequirements: {
+            type: DataTypes.TEXT,
+            field: "special_requirements",
+        },
+        feedbackRating: {
+            type: DataTypes.INTEGER,
+            field: "feedback_rating",
+        },
+        feedbackComment: {
+            type: DataTypes.TEXT,
+            field: "feedback_comment",
+        },
+        feedbackSubmittedAt: {
+            type: DataTypes.DATE,
+            field: "feedback_submitted_at",
+        },
+        createdAt: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW,
+            field: "created_at",
+        },
+        updatedAt: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW,
+            field: "updated_at",
+        },
     },
-    jobTitle: {
-      type: String,
-      trim: true,
+    {
+        tableName: "participants",
+        timestamps: true,
+        underscored: true,
+        indexes: [
+            {
+                unique: true,
+                fields: ["user_id", "event_id"],
+            },
+        ],
     },
-    dietaryRestrictions: String,
-    specialRequirements: String,
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  {
-    timestamps: true,
-  },
 )
-
-const Participant = mongoose.model("Participant", participantSchema)
 
 export default Participant
 
