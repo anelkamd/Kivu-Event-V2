@@ -16,6 +16,7 @@ import speakerRoutes from "./routes/speaker.routes.js"
 import participantRoutes from "./routes/participant.routes.js"
 import paymentRoutes from "./routes/payment.routes.js"
 
+
 // Middlewares
 import { errorHandler } from "./middleware/error.middleware.js"
 
