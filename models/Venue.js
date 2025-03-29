@@ -1,101 +1,91 @@
-import { DataTypes, Model } from "sequelize"
+import { DataTypes } from "sequelize"
+import { v4 as uuidv4 } from "uuid"
 import { sequelize } from "../config/database.js"
 
-class Venue extends Model {}
-
-Venue.init(
-  {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
+const Venue = sequelize.define(
+    "Venue",
+    {
+        id: {
+            type: DataTypes.STRING,
+            primaryKey: true,
+            defaultValue: () => uuidv4(),
+        },
+        name: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+        },
+        street: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+        },
+        city: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+        },
+        state: {
+            type: DataTypes.STRING(100),
+        },
+        country: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+        },
+        postalCode: {
+            type: DataTypes.STRING(20),
+            field: "postal_code",
+        },
+        capacity: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+        facilities: {
+            type: DataTypes.TEXT,
+        },
+        contactName: {
+            type: DataTypes.STRING(100),
+            field: "contact_name",
+        },
+        contactEmail: {
+            type: DataTypes.STRING(100),
+            field: "contact_email",
+        },
+        contactPhone: {
+            type: DataTypes.STRING(20),
+            field: "contact_phone",
+        },
+        description: {
+            type: DataTypes.TEXT,
+        },
+        images: {
+            type: DataTypes.TEXT,
+            get() {
+                const rawValue = this.getDataValue("images")
+                return rawValue ? rawValue.split(",") : []
+            },
+            set(val) {
+                this.setDataValue("images", val.join(","))
+            },
+        },
+        isActive: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: true,
+            field: "is_active",
+        },
+        createdAt: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW,
+            field: "created_at",
+        },
+        updatedAt: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW,
+            field: "updated_at",
+        },
     },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: { msg: "Le nom du lieu est requis" },
-      },
+    {
+        tableName: "venues",
+        timestamps: true,
+        underscored: true,
     },
-    street: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    city: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    state: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    country: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    postalCode: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    capacity: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      validate: {
-        min: { args: [1], msg: "La capacité doit être d'au moins 1" },
-      },
-    },
-    facilities: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      get() {
-        const rawValue = this.getDataValue("facilities")
-        return rawValue ? rawValue.split(",") : []
-      },
-      set(val) {
-        this.setDataValue("facilities", val.join(","))
-      },
-    },
-    contactName: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    contactEmail: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      validate: {
-        isEmail: { msg: "Veuillez fournir un email valide pour le contact" },
-      },
-    },
-    contactPhone: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    images: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      get() {
-        const rawValue = this.getDataValue("images")
-        return rawValue ? rawValue.split(",") : []
-      },
-      set(val) {
-        this.setDataValue("images", val.join(","))
-      },
-    },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true,
-    },
-  },
-  {
-    sequelize,
-    modelName: "venue",
-    tableName: "venues",
-    timestamps: true,
-  },
 )
 
 export default Venue
