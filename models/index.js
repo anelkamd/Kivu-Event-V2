@@ -1,41 +1,41 @@
-import User from "./User.js"
-import Event from "./Event.js"
-import Venue from "./Venue.js"
-import Speaker from "./Speaker.js"
-import Participant from "./Participant.js"
-import Agenda from "./Agenda.js"
+// Importation des modèles
+import User from "./user.js"
+import Event from "./event.js"
+import Venue from "./venue.js"
+import Speaker from "./speaker.model.js"
+import Participant from "./participant.model.js"
+import Agenda from "./agenda.model.js"
+import Payment from "./payment.model.js"
 
-// Associations User - Event (Organisateur)
-User.hasMany(Event, { as: "organizedEvents", foreignKey: "organizerId" })
-Event.belongsTo(User, { as: "organizer", foreignKey: "organizerId" })
+// Définition des associations entre les modèles
+// Assurez-vous que tous les modèles sont correctement initialisés avant de définir les associations
+User.hasMany(Event, { foreignKey: "organizer_id", as: "organizedEvents" })
+Event.belongsTo(User, { foreignKey: "organizer_id", as: "organizer" })
 
-// Associations Event - Venue
-Venue.hasMany(Event, { foreignKey: "venueId" })
-Event.belongsTo(Venue, { foreignKey: "venueId" })
+Venue.hasMany(Event, { foreignKey: "venue_id" })
+Event.belongsTo(Venue, { foreignKey: "venue_id" })
 
-// Associations Event - Speaker (via table de jonction)
-Event.belongsToMany(Speaker, { through: "event_speakers", timestamps: true })
-Speaker.belongsToMany(Event, { through: "event_speakers", timestamps: true })
+Event.belongsToMany(Speaker, { through: "event_speakers", foreignKey: "event_id" })
+Speaker.belongsToMany(Event, { through: "event_speakers", foreignKey: "speaker_id" })
 
-// Associations User - Event (via Participant)
-User.belongsToMany(Event, {
-  through: Participant,
-  foreignKey: "userId",
-  otherKey: "eventId",
-})
-Event.belongsToMany(User, {
-  through: Participant,
-  foreignKey: "eventId",
-  otherKey: "userId",
-})
+User.hasMany(Participant, { foreignKey: "user_id" })
+Participant.belongsTo(User, { foreignKey: "user_id" })
 
-// Associations Event - Agenda
-Event.hasMany(Agenda, { foreignKey: "eventId" })
-Agenda.belongsTo(Event, { foreignKey: "eventId" })
+Event.hasMany(Participant, { foreignKey: "event_id" })
+Participant.belongsTo(Event, { foreignKey: "event_id" })
 
-// Associations Speaker - Agenda
-Speaker.hasMany(Agenda, { foreignKey: "speakerId" })
-Agenda.belongsTo(Speaker, { foreignKey: "speakerId" })
+Event.hasMany(Agenda, { foreignKey: "event_id" })
+Agenda.belongsTo(Event, { foreignKey: "event_id" })
 
-export { User, Event, Venue, Speaker, Participant, Agenda }
+Speaker.hasMany(Agenda, { foreignKey: "speaker_id" })
+Agenda.belongsTo(Speaker, { foreignKey: "speaker_id" })
+
+User.hasMany(Payment, { foreignKey: "user_id" })
+Payment.belongsTo(User, { foreignKey: "user_id" })
+
+Event.hasMany(Payment, { foreignKey: "event_id" })
+Payment.belongsTo(Event, { foreignKey: "event_id" })
+
+// Exportation des modèles
+export { User, Event, Venue, Speaker, Participant, Agenda, Payment }
 
