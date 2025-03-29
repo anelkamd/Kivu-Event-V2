@@ -1,104 +1,101 @@
-import { DataTypes, Model } from "sequelize"
+import { DataTypes } from "sequelize"
+import { v4 as uuidv4 } from "uuid"
 import { sequelize } from "../config/database.js"
 
-class Event extends Model {
-  // Méthode pour vérifier si l'événement est complet
-  isFull() {
-    return this.getParticipants().then((participants) => {
-      return participants.length >= this.capacity
-    })
-  }
-
-  // Méthode pour vérifier si les inscriptions sont ouvertes
-  isRegistrationOpen() {
-    return this.status === "published" && new Date() <= this.registrationDeadline
-  }
-}
-
-Event.init(
-  {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
-    title: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: { msg: "Le titre est requis" },
-      },
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      validate: {
-        notEmpty: { msg: "La description est requise" },
-      },
-    },
-    type: {
-      type: DataTypes.ENUM("conference", "seminar", "workshop", "meeting"),
-      allowNull: false,
-    },
-    startDate: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    endDate: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      validate: {
-        isAfterStartDate(value) {
-          if (new Date(value) <= new Date(this.startDate)) {
-            throw new Error("La date de fin doit être postérieure à la date de début")
-          }
+const Event = sequelize.define(
+    "Event",
+    {
+        id: {
+            type: DataTypes.STRING,
+            primaryKey: true,
+            defaultValue: () => uuidv4(),
         },
-      },
-    },
-    capacity: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      validate: {
-        min: { args: [1], msg: "La capacité doit être d'au moins 1" },
-      },
-    },
-    registrationDeadline: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      validate: {
-        isBeforeStartDate(value) {
-          if (new Date(value) > new Date(this.startDate)) {
-            throw new Error("La date limite d'inscription doit être antérieure à la date de début")
-          }
+        title: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
         },
-      },
+        description: {
+            type: DataTypes.TEXT,
+            allowNull: false,
+        },
+        type: {
+            type: DataTypes.ENUM("conference", "seminar", "workshop", "meeting"),
+            allowNull: false,
+        },
+        startDate: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            field: "start_date",
+        },
+        endDate: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            field: "end_date",
+        },
+        capacity: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+        registrationDeadline: {
+            type: DataTypes.DATE,
+            allowNull: false,
+            field: "registration_deadline",
+        },
+        status: {
+            type: DataTypes.ENUM("draft", "published", "cancelled", "completed"),
+            defaultValue: "draft",
+        },
+        image: {
+            type: DataTypes.STRING(255),
+        },
+        tags: {
+            type: DataTypes.TEXT,
+            get() {
+                const rawValue = this.getDataValue("tags")
+                return rawValue ? rawValue.split(",") : []
+            },
+            set(val) {
+                this.setDataValue("tags", val.join(","))
+            },
+        },
+        price: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0,
+        },
+        organizerId: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            field: "organizer_id",
+            references: {
+                model: "users",
+                key: "id",
+            },
+        },
+        venueId: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            field: "venue_id",
+            references: {
+                model: "venues",
+                key: "id",
+            },
+        },
+        createdAt: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW,
+            field: "created_at",
+        },
+        updatedAt: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW,
+            field: "updated_at",
+        },
     },
-    status: {
-      type: DataTypes.ENUM("draft", "published", "cancelled", "completed"),
-      defaultValue: "draft",
+    {
+        tableName: "events",
+        timestamps: true,
+        underscored: true,
     },
-    image: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    tags: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      get() {
-        const rawValue = this.getDataValue("tags")
-        return rawValue ? rawValue.split(",") : []
-      },
-      set(val) {
-        this.setDataValue("tags", val.join(","))
-      },
-    },
-  },
-  {
-    sequelize,
-    modelName: "event",
-    tableName: "events",
-    timestamps: true,
-  },
 )
 
 export default Event
