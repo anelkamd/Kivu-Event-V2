@@ -1,102 +1,99 @@
-import { DataTypes, Model } from "sequelize"
+import { DataTypes } from "sequelize"
+import { v4 as uuidv4 } from "uuid"
 import bcrypt from "bcryptjs"
 import { sequelize } from "../config/database.js"
 
-class User extends Model {
-  // Méthode pour comparer les mots de passe
-  async comparePassword(enteredPassword) {
-    return await bcrypt.compare(enteredPassword, this.password)
-  }
-
-  // Méthode pour obtenir le nom complet
-  get fullName() {
-    return `${this.firstName} ${this.lastName}`
-  }
-}
-
-User.init(
-  {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
+const User = sequelize.define(
+    "User",
+    {
+        id: {
+            type: DataTypes.STRING,
+            primaryKey: true,
+            defaultValue: () => uuidv4(),
+        },
+        firstName: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            field: "first_name",
+        },
+        lastName: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            field: "last_name",
+        },
+        email: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            unique: true,
+            validate: {
+                isEmail: true,
+            },
+        },
+        password: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+        },
+        role: {
+            type: DataTypes.ENUM("admin", "organizer", "participant"),
+            defaultValue: "participant",
+        },
+        phoneNumber: {
+            type: DataTypes.STRING(20),
+            field: "phone_number",
+        },
+        profileImage: {
+            type: DataTypes.STRING(255),
+            field: "profile_image",
+        },
+        isActive: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: true,
+            field: "is_active",
+        },
+        resetPasswordToken: {
+            type: DataTypes.STRING(255),
+            field: "reset_password_token",
+        },
+        resetPasswordExpire: {
+            type: DataTypes.DATE,
+            field: "reset_password_expire",
+        },
+        createdAt: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW,
+            field: "created_at",
+        },
+        updatedAt: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW,
+            field: "updated_at",
+        },
     },
-    firstName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: { msg: "Le prénom est requis" },
-      },
+    {
+        tableName: "users",
+        timestamps: true,
+        underscored: true,
+        hooks: {
+            beforeCreate: async (user) => {
+                if (user.password) {
+                    const salt = await bcrypt.genSalt(10)
+                    user.password = await bcrypt.hash(user.password, salt)
+                }
+            },
+            beforeUpdate: async (user) => {
+                if (user.changed("password")) {
+                    const salt = await bcrypt.genSalt(10)
+                    user.password = await bcrypt.hash(user.password, salt)
+                }
+            },
+        },
     },
-    lastName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: { msg: "Le nom est requis" },
-      },
-    },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-      validate: {
-        isEmail: { msg: "Veuillez fournir un email valide" },
-      },
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        len: { args: [6, 100], msg: "Le mot de passe doit contenir au moins 6 caractères" },
-      },
-    },
-    role: {
-      type: DataTypes.ENUM("admin", "organizer", "participant"),
-      defaultValue: "participant",
-    },
-    phoneNumber: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    profileImage: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true,
-    },
-    resetPasswordToken: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    resetPasswordExpire: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-  },
-  {
-    sequelize,
-    modelName: "user",
-    tableName: "users",
-    timestamps: true,
-    hooks: {
-      // Hacher le mot de passe avant de sauvegarder
-      beforeCreate: async (user) => {
-        if (user.password) {
-          const salt = await bcrypt.genSalt(10)
-          user.password = await bcrypt.hash(user.password, salt)
-        }
-      },
-      beforeUpdate: async (user) => {
-        if (user.changed("password")) {
-          const salt = await bcrypt.genSalt(10)
-          user.password = await bcrypt.hash(user.password, salt)
-        }
-      },
-    },
-  },
 )
+
+// Méthode pour comparer les mots de passe
+User.prototype.matchPassword = async function (enteredPassword) {
+    return await bcrypt.compare(enteredPassword, this.password)
+}
 
 export default User
 
