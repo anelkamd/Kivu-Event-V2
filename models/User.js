@@ -75,13 +75,13 @@ const User = sequelize.define(
         underscored: true,
         hooks: {
             beforeCreate: async (user) => {
-                if (user.password) {
+                if (user.password && !user.password.startsWith("$2b$")) { // Éviter de hacher un mot de passe déjà haché
                     const salt = await bcrypt.genSalt(10)
                     user.password = await bcrypt.hash(user.password, salt)
                 }
             },
             beforeUpdate: async (user) => {
-                if (user.changed("password")) {
+                if (user.changed("password") && !user.password.startsWith("$2b$")) { // Vérification supplémentaire
                     const salt = await bcrypt.genSalt(10)
                     user.password = await bcrypt.hash(user.password, salt)
                 }
@@ -92,8 +92,15 @@ const User = sequelize.define(
 
 // Méthode pour comparer les mots de passe
 User.prototype.matchPassword = async function (enteredPassword) {
-    return await bcrypt.compare(enteredPassword, this.password)
+    try {
+        if (!this.password) {
+            throw new Error("Mot de passe non défini pour cet utilisateur")
+        }
+        return await bcrypt.compare(enteredPassword, this.password)
+    } catch (error) {
+        console.error("Erreur lors de la comparaison des mots de passe:", error)
+        return false
+    }
 }
 
 export default User
-
