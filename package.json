@@ -45,6 +45,7 @@
     "@stripe/react-stripe-js": "latest",
     "@stripe/stripe-js": "latest",
     "@tanstack/react-query": "latest",
+    "@tanstack/react-query-devtools": "^5.70.0",
     "@testing-library/dom": "latest",
     "@testing-library/jest-dom": "latest",
     "@testing-library/react": "latest",
