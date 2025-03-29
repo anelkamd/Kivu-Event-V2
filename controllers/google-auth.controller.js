@@ -1,5 +1,5 @@
 import { User } from "../models/index.js"
-import { generateToken } from "../utils/generateToken.js"
+import generateToken from "../utils/generateToken.js"
 import { OAuth2Client } from "google-auth-library"
 
 const client = new OAuth2Client(
