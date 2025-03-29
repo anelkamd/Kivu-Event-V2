@@ -1,26 +1,22 @@
 import express from "express"
 import {
-    createPaymentIntent,
-    confirmPayment,
-    getPayments,
+    createPayment,
     getUserPayments,
-    getPayment,
-    refundPayment,
+    getPaymentById,
+    updatePayment,
+    deletePayment,
 } from "../controllers/payment.controller.js"
 import { protect, authorize } from "../middleware/auth.middleware.js"
 
 const router = express.Router()
 
-// Routes publiques
-router.post("/create-intent", protect, createPaymentIntent)
-router.post("/confirm", protect, confirmPayment)
+router.route("/").post(protect, createPayment).get(protect, getUserPayments)
 
-// Routes privées (utilisateur)
-router.get("/user", protect, getUserPayments)
-
-// Routes privées (admin)
-router.get("/", protect, authorize("admin"), getPayments)
-router.get("/:id", protect, getPayment)
-router.post("/:id/refund", protect, authorize("admin"), refundPayment)
+router
+    .route("/:id")
+    .get(protect, getPaymentById)
+    .put(protect, authorize("admin"), updatePayment)
+    .delete(protect, authorize("admin"), deletePayment)
 
 export default router
+
