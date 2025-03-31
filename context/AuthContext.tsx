@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
+
 import { createContext, useContext, useState, useEffect } from "react"
-import axios from "axios"
-import { useRouter } from "next/navigation"
+import axios from "@/lib/axios"
 import { useToast } from "@/hooks/use-toast"
 
 // Définir les types
@@ -22,6 +22,7 @@ interface AuthContextType {
   error: string | null
   register: (firstName: string, lastName: string, email: string, password: string) => Promise<void>
   login: (email: string, password: string) => Promise<void>
+  loginWithGoogle: () => Promise<void>
   logout: () => void
   clearError: () => void
 }
@@ -29,15 +30,11 @@ interface AuthContextType {
 // Créer le contexte
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// URL de l'API
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-
 // Provider component
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
   const { toast } = useToast()
 
   // Vérifier si l'utilisateur est connecté au chargement
@@ -45,25 +42,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const checkUserLoggedIn = async () => {
       try {
         const token = localStorage.getItem("token")
+        console.log("Checking authentication with token:", token ? "exists" : "missing")
 
         if (!token) {
+          console.log("No token found, user not authenticated")
           setLoading(false)
           return
         }
 
-        const config = {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-
-        const res = await axios.get(`${API_URL}/api/auth/me`, config)
+        const res = await axios.get("/api/auth/me")
+        console.log("Authentication check response:", res.data)
 
         if (res.data.success) {
+          console.log("User authenticated successfully:", res.data.data)
           setUser(res.data.data)
         }
-      } catch (error) {
+      } catch (error: any) {
+        console.error("Authentication check failed:", error)
         localStorage.removeItem("token")
+        document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
         setUser(null)
       } finally {
         setLoading(false)
@@ -79,7 +76,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(true)
       setError(null)
 
-      const res = await axios.post(`${API_URL}/api/auth/register`, {
+      const res = await axios.post("/api/auth/register", {
         firstName,
         lastName,
         email,
@@ -88,12 +85,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (res.data.success) {
         localStorage.setItem("token", res.data.token)
+        document.cookie = `token=${res.data.token}; path=/; max-age=${60 * 60 * 24 * 7}` // 7 jours
         setUser(res.data.data)
         toast({
           title: "Inscription réussie",
           description: "Votre compte a été créé avec succès.",
         })
-        router.push("/dashboard")
+
+        // Utiliser window.location.href pour une redirection complète
+        window.location.href = "/dashboard"
       }
     } catch (error: any) {
       setError(error.response?.data?.error || "Une erreur s'est produite lors de l'inscription.")
@@ -113,21 +113,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(true)
       setError(null)
 
-      const res = await axios.post(`${API_URL}/api/auth/login`, {
+      console.log("Tentative de connexion avec:", { email, password: "***" })
+
+      const res = await axios.post("/api/auth/login", {
         email,
         password,
       })
 
+      console.log("Réponse de connexion:", res.data)
+
       if (res.data.success) {
+        // Stocker le token à la fois dans localStorage et dans un cookie
         localStorage.setItem("token", res.data.token)
+        document.cookie = `token=${res.data.token}; path=/; max-age=${60 * 60 * 24 * 7}` // 7 jours
+
         setUser(res.data.data)
         toast({
           title: "Connexion réussie",
           description: "Vous êtes maintenant connecté.",
         })
-        router.push("/dashboard")
+
+        console.log("Redirection vers /dashboard")
+
+        // Forcer la navigation avec window.location au lieu de router.push
+        window.location.href = "/dashboard"
       }
     } catch (error: any) {
+      console.error("Erreur de connexion:", error)
       setError(error.response?.data?.error || "Une erreur s'est produite lors de la connexion.")
       toast({
         title: "Erreur de connexion",
@@ -139,11 +151,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
+  // Connecter avec Google
+  const loginWithGoogle = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Implémentez ici la logique de connexion avec Google
+      // Après une connexion réussie, utilisez window.location.href pour rediriger
+
+      toast({
+        title: "Fonctionnalité en développement",
+        description: "La connexion avec Google sera bientôt disponible.",
+      })
+    } catch (error: any) {
+      console.error("Erreur de connexion Google:", error)
+      setError(error.response?.data?.error || "Une erreur s'est produite lors de la connexion avec Google.")
+      toast({
+        title: "Erreur de connexion",
+        description: error.response?.data?.error || "Une erreur s'est produite lors de la connexion avec Google.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Déconnecter un utilisateur
   const logout = () => {
     localStorage.removeItem("token")
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
     setUser(null)
-    router.push("/login")
+
+    // Utiliser window.location.href pour une redirection complète
+    window.location.href = "/login"
+
     toast({
       title: "Déconnexion réussie",
       description: "Vous avez été déconnecté avec succès.",
@@ -163,6 +205,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             error,
             register,
             login,
+            loginWithGoogle,
             logout,
             clearError,
           }}
