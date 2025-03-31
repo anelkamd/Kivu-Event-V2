@@ -1,38 +1,50 @@
 import axios from "axios"
-import Cookies from "js-cookie"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
 const instance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
+    baseURL: API_URL,
+    headers: {
+        "Content-Type": "application/json",
+    },
 })
 
-// Ajouter le token d'authentification à chaque requête
+// Intercepteur pour ajouter le token d'authentification à chaque requête
 instance.interceptors.request.use(
-  (config) => {
-    const token = Cookies.get("token")
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error),
+    (config) => {
+        const token = localStorage.getItem("token")
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`
+            console.log(`Request to ${config.url} with token`)
+        } else {
+            console.log(`Request to ${config.url} without token`)
+        }
+        return config
+    },
+    (error) => {
+        console.error("Request error:", error)
+        return Promise.reject(error)
+    },
 )
 
-// Gérer les erreurs de réponse
+// Intercepteur pour gérer les erreurs de réponse
 instance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Rediriger vers la page de connexion si le token est expiré ou invalide
-    if (error.response?.status === 401) {
-      Cookies.remove("token")
-      if (typeof window !== "undefined") {
-        window.location.href = "/login"
-      }
-    }
-    return Promise.reject(error)
-  },
+    (response) => {
+        console.log(`Response from ${response.config.url} successful`)
+        return response
+    },
+    (error) => {
+        console.error(`Error response from ${error.config?.url}:`, error.response?.status, error.message)
+
+        // Gérer les erreurs 401 (non autorisé)
+        if (error.response && error.response.status === 401) {
+            console.log("Unauthorized access, redirecting to login")
+            localStorage.removeItem("token")
+            window.location.href = "/login"
+        }
+
+        return Promise.reject(error)
+    },
 )
 
 export default instance
