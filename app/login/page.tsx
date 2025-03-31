@@ -8,23 +8,33 @@ import { motion } from "framer-motion"
 import { FcGoogle } from "react-icons/fc"
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline"
 
+type FormData = {
+  email: string;
+  password: string;
+};
+
 export default function Login() {
-  const { login, loginWithGoogle } = useAuth()
+  const { login, loginWithGoogle, loading: authLoading, error: authError } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState("")
+
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm()
+  } = useForm<FormData>()
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: FormData) => {
     setIsLoading(true)
+    setError("")
     try {
       await login(data.email, data.password)
-    } catch (error) {
+      // La redirection sera gérée par la fonction login
+    } catch (error: any) {
       console.error("Login error:", error)
+      setError(error?.response?.data?.error || "Erreur de connexion")
     } finally {
       setIsLoading(false)
     }
@@ -104,7 +114,7 @@ export default function Login() {
                     })}
                 />
                 {errors.email && (
-                    <p className="mt-1 text-sm text-red-500">{errors.email.message as string}</p>
+                    <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>
                 )}
               </div>
 
@@ -141,7 +151,7 @@ export default function Login() {
                   </button>
                 </div>
                 {errors.password && (
-                    <p className="mt-1 text-sm text-red-500">{errors.password.message as string}</p>
+                    <p className="mt-1 text-sm text-red-500">{errors.password.message}</p>
                 )}
               </div>
 
@@ -165,9 +175,13 @@ export default function Login() {
                 </div>
               </div>
 
+              {(error || authError) && (
+                  <div className="text-sm text-red-500 mt-2">{error || authError}</div>
+              )}
+
               <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || authLoading}
                   className="w-full bg-white text-black font-medium py-3 px-4 rounded-xl hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
