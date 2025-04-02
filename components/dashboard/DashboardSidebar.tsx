@@ -66,7 +66,6 @@ export function Sidebar() {
           </Link>
         </div>
 
-        {/* Search - mobile view will have this in header */}
         <div className="px-4 hidden lg:block">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -121,7 +120,6 @@ export function Sidebar() {
               )
             })}
 
-            {/* Bouton pour basculer entre le mode clair et sombre */}
             <button
                 onClick={() => setTheme(isDark ? "light" : "dark")}
                 className="flex w-full items-center px-3 py-2 rounded-md transition-colors text-muted-foreground hover:bg-muted/60"
