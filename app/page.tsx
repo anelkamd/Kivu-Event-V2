@@ -139,10 +139,10 @@ export default function LandingPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-black/10 dark:border-white/10">
                             <div className="flex items-center justify-between">
-                              <div className="text-sm font-semibold">Conférence Tech</div>
+                              <div className="text-sm font-semibold">Lancement de Weka</div>
                               <Calendar className="h-4 w-4" />
                             </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">15 Déc 2023</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">15 Déc 2025</div>
                             <div className="mt-2 text-xs bg-black/10 dark:bg-white/10 text-gray-700 dark:text-gray-300 py-1 px-2 rounded-full w-fit">
                               248 participants
                             </div>
@@ -152,7 +152,7 @@ export default function LandingPage() {
                               <div className="text-sm font-semibold">Séminaire Web</div>
                               <Calendar className="h-4 w-4" />
                             </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">20 Déc 2023</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">20 Déc 2025</div>
                             <div className="mt-2 text-xs bg-black/10 dark:bg-white/10 text-gray-700 dark:text-gray-300 py-1 px-2 rounded-full w-fit">
                               124 participants
                             </div>
@@ -344,21 +344,21 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
                 {
-                  name: "Sophie Martin",
-                  position: "Directrice Marketing, TechCorp",
+                  name: "Baraka Espoir",
+                  position: "Developpeur Web, ISIG Goma",
                   quote:
                       "Kivu Event a révolutionné notre façon d'organiser des événements professionnels. Tout est devenu plus simple et plus efficace.",
                   delay: 0.2,
                 },
                 {
-                  name: "Marc Dubois",
-                  position: "DRH, Finance Plus",
+                  name: "Josias Kabambi",
+                  position: "Manager, G-SoluTech",
                   quote:
                       "La gestion des participants et le suivi des performances nous ont permis d'améliorer considérablement nos séminaires d'entreprise.",
                   delay: 0.4,
                 },
                 {
-                  name: "Claire Leroy",
+                  name: "Greg Banza",
                   position: "CEO, StartupLab",
                   quote:
                       "Une solution complète qui nous fait gagner un temps précieux. L'interface est intuitive et les fonctionnalités sont nombreuses.",
@@ -429,7 +429,7 @@ export default function LandingPage() {
                     asChild
                     size="lg"
                     variant="outline"
-                    className="border-white text-white hover:bg-white/10 dark:border-black dark:text-black dark:hover:bg-black/10 rounded-lg"
+                    className="border-white text-black hover:text-white hover:bg-white/10 dark:border-black dark:text-white dark:hover:bg-black/10 dark:hover:text-black rounded-lg"
                 >
                   <Link href="/login">Se connecter</Link>
                 </Button>
