@@ -131,18 +131,18 @@ export default function Dashboard() {
     return (
         <div className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Section principale (2/3 de l'écran sur grand écran) */}
+
                 <div className="col-span-1 lg:col-span-2 space-y-6">
-                    {/* Bannière de bienvenue */}
+
                     <Card className="overflow-hidden bg-gradient-to-r from-primary/80 to-primary">
-                        <CardContent className="p-6 text-white">
+                        <CardContent className="p-6 text-white dark:text-black">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                                 <div>
                                     <h2 className="text-2xl font-bold mb-2">Développez vos compétences en gestion événementielle</h2>
-                                    <p className="text-white/80 mb-6">
+                                    <p className="text-white/80 mb-6 dark:text-black">
                                         Utilisez Kivu Event pour organiser des événements professionnels de qualité
                                     </p>
-                                    <Button variant="secondary" className="bg-white text-primary hover:bg-white/90">
+                                    <Button variant="secondary" className="bg-white text-primary hover:bg-white/90 dark:text-black">
                                         Créer un événement <ArrowRightIcon className="ml-2 h-4 w-4" />
                                     </Button>
                                 </div>
@@ -151,7 +151,7 @@ export default function Dashboard() {
                                         <svg
                                             viewBox="0 0 200 200"
                                             xmlns="http://www.w3.org/2000/svg"
-                                            className="absolute inset-0 h-full w-full text-white/20"
+                                            className="absolute inset-0 h-full w-full text-white/20 dark:text-black/20"
                                         >
                                             <path
                                                 fill="currentColor"
@@ -160,7 +160,7 @@ export default function Dashboard() {
                                             />
                                         </svg>
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            <CalendarIcon className="h-20 w-20 text-white" />
+                                            <CalendarIcon className="h-20 w-20 text-white dark:text-black" />
                                         </div>
                                     </div>
                                 </div>
@@ -168,7 +168,6 @@ export default function Dashboard() {
                         </CardContent>
                     </Card>
 
-                    {/* Catégories d'événements */}
                     <div>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold">Catégories d'événements</h2>
@@ -200,7 +199,6 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* Événements récents */}
                     <div>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold">Événements récents</h2>
@@ -249,9 +247,8 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Sidebar (1/3 de l'écran sur grand écran) */}
                 <div className="col-span-1 space-y-6">
-                    {/* Informations utilisateur */}
+
                     <Card>
                         <CardContent className="p-6">
                             <div className="flex flex-col items-center text-center">
@@ -290,7 +287,6 @@ export default function Dashboard() {
                         </CardContent>
                     </Card>
 
-                    {/* Statistiques */}
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-md">Statistiques mensuelles</CardTitle>
@@ -300,7 +296,7 @@ export default function Dashboard() {
                                 {[40, 65, 45, 80, 75, 90].map((height, i) => (
                                     <div key={i} className="relative group">
                                         <div
-                                            className="w-8 bg-primary/80 rounded-t-md transition-all duration-300 group-hover:bg-primary"
+                                            className="w-8 bg-white rounded-t-md transition-all duration-300 group-hover:bg-primary"
                                             style={{ height: `${height}%` }}
                                         ></div>
                                         <div className="text-xs text-muted-foreground mt-2">0{i + 1}/23</div>
@@ -313,7 +309,6 @@ export default function Dashboard() {
                         </CardContent>
                     </Card>
 
-                    {/* Prochains événements */}
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-md">Prochains événements</CardTitle>
@@ -326,7 +321,7 @@ export default function Dashboard() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <p className="text-sm font-medium truncate">Conférence sur l'IA</p>
-                                        <p className="text-xs text-muted-foreground">15 décembre 2023</p>
+                                        <p className="text-xs text-muted-foreground">15 décembre 2025</p>
                                     </div>
                                 </div>
 
@@ -336,7 +331,7 @@ export default function Dashboard() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <p className="text-sm font-medium truncate">Séminaire de développement web</p>
-                                        <p className="text-xs text-muted-foreground">20 décembre 2023</p>
+                                        <p className="text-xs text-muted-foreground">20 décembre 2025</p>
                                     </div>
                                 </div>
 
@@ -346,7 +341,7 @@ export default function Dashboard() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <p className="text-sm font-medium truncate">Workshop Design Thinking</p>
-                                        <p className="text-xs text-muted-foreground">5 janvier 2024</p>
+                                        <p className="text-xs text-muted-foreground">5 Avril 2025</p>
                                     </div>
                                 </div>
                             </div>
