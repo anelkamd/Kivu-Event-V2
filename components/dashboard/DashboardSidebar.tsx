@@ -1,121 +1,166 @@
 "use client"
 
-import { useState } from "react"
+import { useAuth } from "@/context/AuthContext"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useAuth } from "@/context/AuthContext"
-import { motion } from "framer-motion"
-import {
-  HomeIcon,
-  CalendarIcon,
-  UserGroupIcon,
-  BuildingOfficeIcon,
-  UserIcon,
-  Cog6ToothIcon,
-  ArrowLeftOnRectangleIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from "@heroicons/react/24/outline"
-import { cn } from "@/lib/utils"
+import { LayoutDashboard, Inbox, Calendar, Users, Settings, LogOut, Search, MapPin, User, Moon, Sun } from 'lucide-react'
+import { useTheme } from "next-themes"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
-const navigation = [
-  { name: "Tableau de bord", href: "/dashboard", icon: HomeIcon },
-  { name: "Événements", href: "/dashboard/events", icon: CalendarIcon },
-  { name: "Participants", href: "/dashboard/participants", icon: UserGroupIcon },
-  { name: "Lieux", href: "/dashboard/venues", icon: BuildingOfficeIcon },
-  { name: "Profil", href: "/dashboard/profile", icon: UserIcon },
-  { name: "Paramètres", href: "/dashboard/settings", icon: Cog6ToothIcon },
-]
-
-export default function DashboardSidebar() {
-  const [collapsed, setCollapsed] = useState(false)
+export function Sidebar() {
   const { user, logout } = useAuth()
   const pathname = usePathname()
+  const { theme, setTheme } = useTheme()
+  const isDark = theme === "dark"
+
+  const navItems = [
+    {
+      name: "Tableau de bord",
+      href: "/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      name: "Messages",
+      href: "/dashboard/inbox",
+      icon: Inbox,
+    },
+    {
+      name: "Événements",
+      href: "/dashboard/events",
+      icon: Calendar,
+    },
+    {
+      name: "Participants",
+      href: "/dashboard/participants",
+      icon: Users,
+    },
+    {
+      name: "Lieux",
+      href: "/dashboard/venues",
+      icon: MapPin,
+    },
+  ]
+
+  const settingsItems = [
+    {
+      name: "Mon profil",
+      href: "/dashboard/profile",
+      icon: User,
+    },
+    {
+      name: "Paramètres",
+      href: "/dashboard/settings",
+      icon: Settings,
+    }
+  ]
 
   return (
-    <div
-      className={cn(
-        "bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out",
-        collapsed ? "w-16" : "w-64",
-      )}
-    >
-      <div className="flex h-full flex-col">
-        <div className="flex h-16 shrink-0 items-center justify-between px-4">
-          {!collapsed && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="text-xl font-bold text-primary"
-            >
-              Kivu Event
-            </motion.span>
-          )}
-          <button
-            type="button"
-            className="rounded-md p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? <ChevronRightIcon className="h-5 w-5" /> : <ChevronLeftIcon className="h-5 w-5" />}
-          </button>
-        </div>
-        <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
-          <nav className="mt-5 flex-1 space-y-1 px-2">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  pathname === item.href
-                    ? "bg-gray-100 dark:bg-gray-700 text-primary"
-                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-primary",
-                  "group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors",
-                )}
-              >
-                <item.icon
-                  className={cn(
-                    pathname === item.href ? "text-primary" : "text-gray-400 group-hover:text-primary",
-                    "mr-3 h-5 w-5 flex-shrink-0 transition-colors",
-                  )}
-                  aria-hidden="true"
-                />
-                {!collapsed && <span>{item.name}</span>}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="shrink-0 border-t border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center">
-            <div
-              className={cn(
-                "h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center",
-                !collapsed && "mr-3",
-              )}
-            >
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {user?.firstName?.charAt(0)}
-                {user?.lastName?.charAt(0)}
-              </span>
+      <div className="hidden md:flex flex-col h-screen w-60 bg-background border-r border-border">
+        <div className="p-4">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-black text-white dark:bg-white dark:text-black font-bold">
+              KE
             </div>
-            {!collapsed && (
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {user?.firstName} {user?.lastName}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</div>
-              </div>
-            )}
+            <span className="font-semibold text-lg">Kivu Event</span>
+          </Link>
+        </div>
+
+        {/* Search - mobile view will have this in header */}
+        <div className="px-4 hidden lg:block">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+                placeholder="Rechercher..."
+                className="pl-8 h-9 bg-muted/50 border-0"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-between flex-1 p-2 pt-6">
+          <nav className="space-y-1.5">
+            <div className="px-2 pb-2 text-xs font-medium text-muted-foreground uppercase">
+              Navigation
+            </div>
+            {navItems.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+              return (
+                  <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center px-3 py-2 rounded-md transition-colors ${
+                          isActive
+                              ? "bg-black/10 text-black dark:bg-white/10 dark:text-white"
+                              : "text-muted-foreground hover:bg-muted/60"
+                      }`}
+                  >
+                    <item.icon className="w-5 h-5 mr-3" />
+                    {item.name}
+                  </Link>
+              )
+            })}
+
+            <div className="px-2 pt-4 pb-2 text-xs font-medium text-muted-foreground uppercase">
+              Réglages
+            </div>
+            {settingsItems.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+              return (
+                  <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center px-3 py-2 rounded-md transition-colors ${
+                          isActive
+                              ? "bg-black/10 text-black dark:bg-white/10 dark:text-white"
+                              : "text-muted-foreground hover:bg-muted/60"
+                      }`}
+                  >
+                    <item.icon className="w-5 h-5 mr-3" />
+                    {item.name}
+                  </Link>
+              )
+            })}
+
+            {/* Bouton pour basculer entre le mode clair et sombre */}
             <button
-              onClick={logout}
-              className="ml-auto flex-shrink-0 rounded-full p-1 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-              title="Déconnexion"
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+                className="flex w-full items-center px-3 py-2 rounded-md transition-colors text-muted-foreground hover:bg-muted/60"
             >
-              <ArrowLeftOnRectangleIcon className="h-5 w-5" aria-hidden="true" />
+              {isDark ? (
+                  <Sun className="w-5 h-5 mr-3" />
+              ) : (
+                  <Moon className="w-5 h-5 mr-3" />
+              )}
+              {isDark ? "Mode clair" : "Mode sombre"}
             </button>
+          </nav>
+
+          <div className="mt-auto">
+            <div className="border-t border-border pt-4 p-3">
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-black/10 text-black dark:bg-white/10 dark:text-white flex items-center justify-center">
+                  {user?.firstName?.charAt(0) || "U"}
+                  {user?.lastName?.charAt(0) || ""}
+                </div>
+                <div className="ml-3 flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {user?.firstName || "Utilisateur"} {user?.lastName || ""}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email || ""}</p>
+                </div>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={logout}
+                    className="ml-2"
+                    title="Déconnexion"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
   )
 }
-
