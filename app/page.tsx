@@ -8,6 +8,7 @@ import { Navbar } from "@/components/layout/NavBar"
 import { Footer } from "@/components/layout/Footer"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Calendar, Check, Users, ChevronRight, ExternalLink } from "lucide-react"
+import cover from "@/public/images/illustration1.jpg"
 
 export default function LandingPage() {
 
@@ -305,10 +306,10 @@ export default function LandingPage() {
                   </motion.div>
                 </div>
                 <div className="relative">
-                  <div className="h-full w-full bg-gray-200 dark:bg-gray-800 overflow-hidden">
+                  <div className="h-full w-full bg-white dark:bg-gray-800 overflow-hidden">
                     <div className="w-full h-full flex items-center justify-center">
                       <Image
-                          src="/placeholder.svg?height=400&width=600"
+                          src={cover}
                           alt="Dashboard Kivu Event"
                           width={600}
                           height={400}
