@@ -44,7 +44,6 @@ export default function Dashboard() {
             try {
                 console.log("Fetching dashboard data...")
 
-                // Utilisons des données statiques pour le moment puisque l'API n'est pas prête
                 setStats({
                     eventCount: 12,
                     eventTrend: 5,
@@ -54,7 +53,6 @@ export default function Dashboard() {
                     venueTrend: 3,
                 })
 
-                // Simulons également quelques événements
                 setEvents([
                     {
                         id: "1",
@@ -107,9 +105,8 @@ export default function Dashboard() {
         )
     }
 
-    // Récupérer l'heure actuelle
     const currentHour = new Date().getHours()
-    // Déterminer la salutation en fonction de l'heure
+
     let greeting = "Bonjour"
     if (currentHour >= 18) {
         greeting = "Bonsoir"
@@ -119,7 +116,6 @@ export default function Dashboard() {
         greeting = "Bonjour"
     }
 
-    // Récupérer le jour de la semaine
     const days = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
     const today = days[new Date().getDay()]
     const date = new Date().toLocaleDateString("fr-FR", {
