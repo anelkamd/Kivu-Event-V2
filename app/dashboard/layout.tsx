@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter()
 
     useEffect(() => {
-        // Si l'utilisateur n'est pas connecté et que le chargement est terminé, rediriger vers la page de connexion
+
         if (!loading && !user) {
             console.log("Utilisateur non authentifié, redirection vers /login")
             router.push("/login")
@@ -32,14 +32,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     if (!user) {
-        return null // Ne rien afficher pendant la redirection
+        return null
     }
 
     return (
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <div className={cn("flex min-h-screen bg-background text-foreground")}>
                 <Sidebar />
-                <div className="flex flex-col flex-1">
+                <div className="flex flex-col flex-1 h-screen overflow-auto">
                     <MobileHeader />
                     <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">{children}</main>
                 </div>
