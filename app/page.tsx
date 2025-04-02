@@ -65,7 +65,7 @@ export default function LandingPage() {
                     animate={heroInView ? { opacity: 1, x: 0 } : {}}
                     transition={{ delay: 0.3, duration: 0.5 }}
                 >
-                  Nouveau: Maintenant disponible en version beta v1
+                  Nouveau: Maintenant disponible en version beta v1.0
                 </motion.span>
 
                 <motion.h1
