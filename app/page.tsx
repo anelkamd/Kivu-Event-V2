@@ -10,19 +10,17 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Calendar, Check, Users, ChevronRight, ExternalLink } from "lucide-react"
 
 export default function LandingPage() {
-  // Animation refs for sections
+
   const heroRef = useRef<HTMLDivElement>(null)
   const featuresRef = useRef<HTMLDivElement>(null)
   const testimonialsRef = useRef<HTMLDivElement>(null)
   const ctaRef = useRef<HTMLDivElement>(null)
 
-  // Check if sections are in view for animations
   const heroInView = useInView(heroRef, { once: true, margin: "-100px 0px" })
   const featuresInView = useInView(featuresRef, { once: true, margin: "-100px 0px" })
   const testimonialsInView = useInView(testimonialsRef, { once: true, margin: "-100px 0px" })
   const ctaInView = useInView(ctaRef, { once: true, margin: "-100px 0px" })
 
-  // Parallax scroll effect for hero section
   const { scrollY } = useScroll()
   const y1 = useTransform(scrollY, [0, 500], [0, 150])
   const y2 = useTransform(scrollY, [0, 500], [0, -150])
@@ -30,12 +28,11 @@ export default function LandingPage() {
 
   return (
       <div className="flex flex-col min-h-screen bg-white dark:bg-black overflow-hidden">
-        {/* Navbar */}
+
         <Navbar />
 
-        {/* Hero Section */}
         <motion.section ref={heroRef} className="relative pt-20 pb-24 md:pt-28 md:pb-32 overflow-hidden">
-          {/* Background circle decoration */}
+
           <motion.div
               className="absolute -top-20 -right-20 w-96 h-96 rounded-full bg-black/5 dark:bg-white/5"
               style={{ y: y1 }}
@@ -200,7 +197,6 @@ export default function LandingPage() {
           </div>
         </motion.section>
 
-        {/* Features Section */}
         <section ref={featuresRef} className="py-20 bg-gray-50 dark:bg-gray-900">
           <div className="container mx-auto px-4">
             <motion.div
@@ -326,7 +322,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Testimonials Section */}
         <section ref={testimonialsRef} className="py-20">
           <div className="container mx-auto px-4">
             <motion.div
@@ -389,7 +384,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* CTA Section */}
         <section ref={ctaRef} className="py-20 bg-black text-white dark:bg-white dark:text-black">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto text-center">
@@ -438,7 +432,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Footer */}
         <Footer />
       </div>
   )
