@@ -142,7 +142,7 @@ export default function Dashboard() {
                                     <p className="text-white/80 mb-6 dark:text-black">
                                         Utilisez Kivu Event pour organiser des événements professionnels de qualité
                                     </p>
-                                    <Button variant="secondary" className="bg-white text-primary hover:bg-white/90 dark:text-black">
+                                    <Button variant="secondary" className="bg-white text-primary hover:bg-white/90 dark:bg-black dark:text-white/90">
                                         Créer un événement <ArrowRightIcon className="ml-2 h-4 w-4" />
                                     </Button>
                                 </div>
