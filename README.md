@@ -103,7 +103,7 @@ kivu-event/
 ### Prérequis
 - Node.js (v18 ou supérieur)
 - npm ou yarn
-- MongoDB (local ou distant)
+- MySQL (local ou distant)
 
 ### Étapes d'installation
 ```sh
