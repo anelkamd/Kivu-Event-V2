@@ -109,7 +109,7 @@ kivu-event/
 ```sh
 git clone https://github.com/votre-username/kivu-event.git
 cd kivu-event
-npm install
+npm install --legacy-peer-deps 
 ```
 
 Configurer les variables d'environnement dans `.env.local`:
@@ -126,7 +126,8 @@ FRONTEND_URL=http://localhost:3000
 
 Démarrer l'application :
 ```sh
-npm run dev
+npm run dev ( Client )
+node server ( Server )
 ```
 
 ## 📞 Contact
