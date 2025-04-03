@@ -127,7 +127,7 @@ FRONTEND_URL=http://localhost:3000
 Démarrer l'application :
 ```sh
 npm run dev ( Client )
-node server ( Server )
+node server.js ( Server )
 ```
 
 ## 📞 Contact
