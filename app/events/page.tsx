@@ -8,7 +8,7 @@ import type { Event, PaginatedResponse } from "@/types"
 import EventList from "@/components/events/EventList"
 import AdvancedSearch from "@/components/search/AdvancedSearch"
 import LoadingSpinner from "@/components/ui/LoadingSpinner"
-import Pagination from "@/components/ui/Pagination"
+import Pagination from "@/components/ui/pagination"
 
 export default function EventsPage() {
     const searchParams = useSearchParams()
