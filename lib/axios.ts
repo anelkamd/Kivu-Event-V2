@@ -9,7 +9,6 @@ const instance = axios.create({
     },
 })
 
-// Intercepteur pour ajouter le token d'authentification à chaque requête
 instance.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem("token")
@@ -27,7 +26,6 @@ instance.interceptors.request.use(
     },
 )
 
-// Intercepteur pour gérer les erreurs de réponse
 instance.interceptors.response.use(
     (response) => {
         console.log(`Response from ${response.config.url} successful`)
@@ -36,7 +34,6 @@ instance.interceptors.response.use(
     (error) => {
         console.error(`Error response from ${error.config?.url}:`, error.response?.status, error.message)
 
-        // Gérer les erreurs 401 (non autorisé)
         if (error.response && error.response.status === 401) {
             console.log("Unauthorized access, redirecting to login")
             localStorage.removeItem("token")
