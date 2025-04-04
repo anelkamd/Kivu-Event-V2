@@ -7,7 +7,6 @@ import { ToastProvider } from "@/context/ToastContext"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 
-// Créer un client React Query
 const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
