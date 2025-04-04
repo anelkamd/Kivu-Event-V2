@@ -27,7 +27,7 @@ export function Sidebar() {
     },
     {
       name: "Événements",
-      href: "/dashboard/events",
+      href: "/events",
       icon: Calendar,
     },
     {
