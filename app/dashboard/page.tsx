@@ -198,7 +198,7 @@ export default function Dashboard() {
                     <div>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold">Événements récents</h2>
-                            <Link href="/dashboard/events" className="text-sm font-medium text-primary hover:text-primary/90">
+                            <Link href="/events" className="text-sm font-medium text-primary hover:text-primary/90">
                                 Voir tout
                             </Link>
                         </div>
@@ -275,7 +275,7 @@ export default function Dashboard() {
                                         </div>
                                     </div>
 
-                                    <Link href="/dashboard/events/create">
+                                    <Link href="/events/create">
                                         <Button className="w-full">Créer un nouvel événement</Button>
                                     </Link>
                                 </div>
