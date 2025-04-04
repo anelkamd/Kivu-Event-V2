@@ -66,8 +66,7 @@ export default function EventDetailsPage() {
   const [isRegistered, setIsRegistered] = useState<boolean>(false)
 
   useEffect(() => {
-    // Simuler le chargement des données de l'événement
-    // Dans une application réelle, vous feriez un appel API ici
+
     setTimeout(() => {
       setEvent({
         id: id,
@@ -169,7 +168,7 @@ export default function EventDetailsPage() {
   }, [id])
 
   const handleRegister = () => {
-    // Simuler l'inscription à l'événement
+
     setIsRegistered(true)
   }
 
@@ -208,7 +207,7 @@ export default function EventDetailsPage() {
   }
 
   const isDeadlinePassed = new Date(event.registrationDeadline) < new Date()
-  const isEventFull = false // À implémenter avec les données réelles
+  const isEventFull = false
 
   return (
       <div className="container mx-auto p-6">
