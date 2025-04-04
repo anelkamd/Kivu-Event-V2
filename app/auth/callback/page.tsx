@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+// @ts-ignore
 import Cookies from "js-cookie"
 import LoadingSpinner from "@/components/ui/LoadingSpinner"
 
@@ -12,13 +13,10 @@ export default function AuthCallback() {
 
     useEffect(() => {
         if (token) {
-            // Stocker le token dans un cookie
             Cookies.set("token", token, { expires: 30 })
 
-            // Rediriger vers le tableau de bord
             router.push("/dashboard")
         } else {
-            // Rediriger vers la page de connexion en cas d'erreur
             router.push("/login?error=auth_failed")
         }
     }, [token, router])
