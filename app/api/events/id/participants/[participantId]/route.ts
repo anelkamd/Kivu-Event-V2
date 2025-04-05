@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import QRCode from "qrcode";
+import QRCode from 'qrcode';
 import db from "@/lib/db";
 
 export async function GET(
