@@ -4,7 +4,6 @@ import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useSearchParams } from "next/navigation"
 import axios from "@/lib/axios"
-import type { Event, PaginatedResponse } from "@/types"
 import EventList from "@/components/events/EventList"
 import AdvancedSearch from "@/components/search/AdvancedSearch"
 import LoadingSpinner from "@/components/ui/LoadingSpinner"
@@ -28,14 +27,14 @@ export default function EventsPage() {
         }
     }, [searchParams, page, limit])
 
-    const { data, isLoading, isError } = useQuery<PaginatedResponse<Event>>(
-        ["events", queryParams],
-        async () => {
-            const response = await axios.get("/events", { params: queryParams })
+    const { data, isLoading, isError } = useQuery({
+        queryKey: ["events", queryParams],
+        queryFn: async () => {
+            const response = await axios.get("/api/events", { params: queryParams })
             return response.data
         },
-        { keepPreviousData: true }
-    )
+        placeholderData: (previousData) => previousData,
+    })
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -73,3 +72,4 @@ export default function EventsPage() {
         </div>
     )
 }
+
