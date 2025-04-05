@@ -1,12 +1,10 @@
-"use client"
-
-import { useQuery } from "@tanstack/react-query"
-import axios from "@/lib/axios"
+import { GetStaticProps } from 'next'
 import { motion } from "framer-motion"
 import { UserIcon, BriefcaseIcon, StarIcon } from "@heroicons/react/24/outline"
 import LoadingSpinner from "@/components/ui/LoadingSpinner"
 import Link from "next/link"
 import Image from "next/image"
+import axios from "@/lib/axios"
 
 interface Speaker {
     id: string
@@ -20,20 +18,11 @@ interface Speaker {
     rating?: number
 }
 
-export default function SpeakersPage() {
-    const { data: speakers, isLoading } = useQuery<Speaker[]>(
-        ["speakers"],
-        async () => {
-            try {
-                const response = await axios.get("/speakers")
-                return response.data.data
-            } catch (error) {
-                console.error("Error fetching speakers:", error)
-                return []
-            }
-        }
-    )
+interface SpeakersPageProps {
+    speakers: Speaker[]
+}
 
+export default function SpeakersPage({ speakers }: SpeakersPageProps) {
     return (
         <div className="min-h-screen bg-black text-white py-16">
             <div className="container mx-auto px-4">
@@ -49,11 +38,7 @@ export default function SpeakersPage() {
                     </p>
                 </motion.div>
 
-                {isLoading ? (
-                    <div className="flex justify-center py-12">
-                        <LoadingSpinner size="lg" />
-                    </div>
-                ) : speakers && speakers.length > 0 ? (
+                {speakers.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {speakers.map((speaker, index) => (
                             <motion.div
@@ -83,10 +68,10 @@ export default function SpeakersPage() {
                                         <div className="flex items-center text-gray-400 mb-2">
                                             <BriefcaseIcon className="h-4 w-4 mr-1" />
                                             <span>
-                        {speaker.jobTitle}
+                                                {speaker.jobTitle}
                                                 {speaker.jobTitle && speaker.company && " - "}
                                                 {speaker.company}
-                      </span>
+                                            </span>
                                         </div>
                                     )}
                                     {speaker.rating && (
@@ -101,13 +86,13 @@ export default function SpeakersPage() {
                                             <div className="flex flex-wrap gap-2 justify-center">
                                                 {speaker.expertise.slice(0, 3).map((exp, i) => (
                                                     <span key={i} className="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded-full">
-                            {exp}
-                          </span>
+                                                        {exp}
+                                                    </span>
                                                 ))}
                                                 {speaker.expertise.length > 3 && (
                                                     <span className="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded-full">
-                            +{speaker.expertise.length - 3}
-                          </span>
+                                                        +{speaker.expertise.length - 3}
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>
@@ -135,4 +120,26 @@ export default function SpeakersPage() {
             </div>
         </div>
     )
+}
+
+// Fonction pour récupérer les données avant la génération statique
+export const getStaticProps: GetStaticProps = async () => {
+    try {
+        const response = await axios.get("/speakers")
+        const speakers = response.data.data
+        return {
+            props: {
+                speakers
+            },
+            revalidate: 60 // La page sera régénérée chaque minute
+        }
+    } catch (error) {
+        console.error("Error fetching speakers:", error)
+        return {
+            props: {
+                speakers: []
+            },
+            revalidate: 60
+        }
+    }
 }
