@@ -35,6 +35,7 @@ export default function Dashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null)
     const [events, setEvents] = useState<Event[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const [showForm, setShowForm] = useState(false)
 
     useEffect(() => {
         const fetchDashboardData = async () => {
