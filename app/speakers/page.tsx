@@ -1,10 +1,10 @@
-import { GetStaticProps } from 'next'
+// app/speakers/page.tsx
+
 import { motion } from "framer-motion"
 import { UserIcon, BriefcaseIcon, StarIcon } from "@heroicons/react/24/outline"
 import LoadingSpinner from "@/components/ui/LoadingSpinner"
 import Link from "next/link"
 import Image from "next/image"
-import axios from "@/lib/axios"
 
 interface Speaker {
     id: string
@@ -18,11 +18,11 @@ interface Speaker {
     rating?: number
 }
 
-interface SpeakersPageProps {
-    speakers: Speaker[]
-}
+export default async function SpeakersPage() {
+    const response = await fetch(`${process.env.API_BASE_URL}/speakers`)
+    const data = await response.json()
+    const speakers: Speaker[] = data.data
 
-export default function SpeakersPage({ speakers }: SpeakersPageProps) {
     return (
         <div className="min-h-screen bg-black text-white py-16">
             <div className="container mx-auto px-4">
@@ -120,26 +120,4 @@ export default function SpeakersPage({ speakers }: SpeakersPageProps) {
             </div>
         </div>
     )
-}
-
-// Fonction pour récupérer les données avant la génération statique
-export const getStaticProps: GetStaticProps = async () => {
-    try {
-        const response = await axios.get("/speakers")
-        const speakers = response.data.data
-        return {
-            props: {
-                speakers
-            },
-            revalidate: 60 // La page sera régénérée chaque minute
-        }
-    } catch (error) {
-        console.error("Error fetching speakers:", error)
-        return {
-            props: {
-                speakers: []
-            },
-            revalidate: 60
-        }
-    }
 }
