@@ -1,23 +1,44 @@
-"use client"
+// pages/auth/callback.tsx
 
-import { useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-// @ts-ignore
-import Cookies from "js-cookie"
-import LoadingSpinner from "@/components/ui/LoadingSpinner"
+import { GetServerSideProps } from 'next'
+import {useEffect}  from 'react'
+import { useRouter } from 'next/router'
+import Cookies from 'js-cookie'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 
-export default function AuthCallback() {
+// Fonction côté serveur pour la gestion de la redirection
+export const getServerSideProps: GetServerSideProps = async (context) => {
+    const { query } = context
+    const token = query.token as string | undefined
+
+    if (token) {
+        // Si le token est trouvé, on redirige vers la page de callback avec le token en props
+        return {
+            props: { token },  // On passe le token en tant que prop au composant
+        }
+    }
+
+    // Si aucun token n'est trouvé, on redirige vers la page de login avec un message d'erreur
+    return {
+        redirect: {
+            destination: '/login?error=auth_failed',
+            permanent: false,
+        },
+    }
+}
+
+const AuthCallbackPage = ({ token }: { token?: string }) => {
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const token = searchParams.get("token")
 
     useEffect(() => {
         if (token) {
-            Cookies.set("token", token, { expires: 30 })
-
-            router.push("/dashboard")
+            // Si un token est trouvé, on le stocke dans un cookie côté client
+            Cookies.set('token', token, { expires: 30 })
+            // Ensuite, on redirige l'utilisateur vers le dashboard
+            router.push('/dashboard')
         } else {
-            router.push("/login?error=auth_failed")
+            // Si aucun token n'est trouvé, rediriger vers la page de login avec l'erreur
+            router.push('/login?error=auth_failed')
         }
     }, [token, router])
 
@@ -30,3 +51,5 @@ export default function AuthCallback() {
         </div>
     )
 }
+
+export default AuthCallbackPage
