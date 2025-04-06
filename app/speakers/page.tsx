@@ -1,5 +1,3 @@
-// app/speakers/page.tsx
-
 import { motion } from "framer-motion"
 import { UserIcon, BriefcaseIcon, StarIcon } from "@heroicons/react/24/outline"
 import LoadingSpinner from "@/components/ui/LoadingSpinner"
@@ -19,8 +17,21 @@ interface Speaker {
 }
 
 export default async function SpeakersPage() {
-    const response = await fetch(`${process.env.API_BASE_URL}/speakers`)
-    const data = await response.json()
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+    const res = await fetch(`${baseUrl}/speakers`, {
+        cache: "no-store", // pour ne pas avoir de cache lors du build
+    })
+
+    if (!res.ok) {
+        console.error("Erreur lors de la récupération des intervenants :", res.statusText)
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-black text-white">
+                <p>Erreur lors du chargement des intervenants.</p>
+            </div>
+        )
+    }
+
+    const data = await res.json()
     const speakers: Speaker[] = data.data
 
     return (
@@ -52,7 +63,7 @@ export default async function SpeakersPage() {
                                     <div className="relative h-32 w-32 rounded-full overflow-hidden mb-4">
                                         {speaker.profileImage ? (
                                             <Image
-                                                src={speaker.profileImage || "/placeholder.svg"}
+                                                src={speaker.profileImage}
                                                 alt={speaker.name}
                                                 fill
                                                 className="object-cover"
@@ -81,7 +92,7 @@ export default async function SpeakersPage() {
                                         </div>
                                     )}
                                     <p className="text-gray-300 mb-4 text-center line-clamp-3">{speaker.bio}</p>
-                                    {speaker.expertise && speaker.expertise.length > 0 && (
+                                    {speaker.expertise?.length > 0 && (
                                         <div className="mb-4 w-full">
                                             <div className="flex flex-wrap gap-2 justify-center">
                                                 {speaker.expertise.slice(0, 3).map((exp, i) => (
