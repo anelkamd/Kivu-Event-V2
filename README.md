@@ -107,7 +107,7 @@ kivu-event/
 
 ### Étapes d'installation
 ```sh
-git clone https://github.com/votre-username/kivu-event.git
+git clone https://github.com/anelkamd/Kivu-Event-V2
 cd kivu-event
 npm install --legacy-peer-deps 
 ```
