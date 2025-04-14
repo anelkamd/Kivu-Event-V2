@@ -19,7 +19,7 @@ interface Speaker {
 export default async function SpeakersPage() {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
     const res = await fetch(`${baseUrl}/speakers`, {
-        cache: "no-store", // pour ne pas avoir de cache lors du build
+        cache: "no-store",
     })
 
     if (!res.ok) {
