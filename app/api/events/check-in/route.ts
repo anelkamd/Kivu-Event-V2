@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Vérifier si le participant existe
         const [participantCheck] = await db.query(
             "SELECT * FROM participants WHERE id = ? AND event_id = ?",
             [participantId, eventId]
@@ -72,13 +71,11 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Mettre à jour le statut du participant
         await db.query(
             "UPDATE participants SET status = 'attended' WHERE id = ? AND event_id = ?",
             [participantId, eventId]
         );
 
-        // Récupérer le participant mis à jour avec les informations utilisateur
         const [rows] = await db.query(`
       SELECT p.*, 
              u.id as user_id, u.first_name, u.last_name, u.email
