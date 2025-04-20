@@ -97,7 +97,7 @@ export default function LandingPage() {
                   <Button
                       asChild
                       size="lg"
-                      className="bg-black hover:bg-black/90 text-white dark:bg-white dark:text-black dark:hover:bg-white/90 rounded-lg"
+                      className="bg-black hover:bg-black/90 text-white dark:bg-white dark:text-black dark:hover:bg-white/90 rounded-lg cursor-pointer"
                   >
                     <Link href="/login">
                       Se connecter <ArrowRight className="ml-2 h-4 w-4" />
@@ -299,7 +299,7 @@ export default function LandingPage() {
                         asChild
                         className="bg-black hover:bg-black/90 text-white dark:bg-white dark:hover:bg-white/90 dark:text-black rounded-lg"
                     >
-                      <Link href="/register">
+                      <Link href="/login">
                         Essayer gratuitement <ChevronRight className="ml-1 h-4 w-4" />
                       </Link>
                     </Button>
