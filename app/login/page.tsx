@@ -7,6 +7,8 @@ import { useAuth } from "@/context/AuthContext"
 import { motion } from "framer-motion"
 import { FcGoogle } from "react-icons/fc"
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline"
+import {Button} from "@/components/ui/button";
+import {ArrowLeftIcon, ArrowRightIcon} from "lucide-react";
 
 type FormData = {
   email: string;
@@ -196,6 +198,11 @@ export default function Login() {
                     "Se connecter"
                 )}
               </button>
+              <Link href="/">
+                <Button variant="secondary" className="w-full bg-white text-black font-medium py-3 px-4 rounded-xl hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2">
+                  Retour <ArrowLeftIcon className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </form>
 
             <p className="mt-6 text-center text-sm text-gray-400">
