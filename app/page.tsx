@@ -9,6 +9,10 @@ import { Footer } from "@/components/layout/Footer"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Calendar, Check, Users, ChevronRight, ExternalLink } from "lucide-react"
 import cover from "@/public/images/illustration1.jpg"
+import  sponso1 from "@/public/sponso1.png"
+import  sponso2 from "@/public/sponso2.png"
+import  sponso3 from "@/public/sponso3.png"
+import  sponso4 from "@/public/sponso4.png"
 
 export default function LandingPage() {
 
