@@ -9,7 +9,6 @@ export async function GET(
     try {
         const { id: eventId, participantId } = params;
 
-        // Récupérer le participant avec les informations utilisateur
         const [rows] = await db.query(`
       SELECT p.*, 
              u.id as user_id, u.first_name, u.last_name, u.email
@@ -27,7 +26,6 @@ export async function GET(
 
         const row = (rows as any[])[0];
 
-        // Générer le QR code
         const qrCodeData = JSON.stringify({
             id: row.id,
             eventId: row.event_id,
@@ -81,7 +79,6 @@ export async function PUT(
         const { id: eventId, participantId } = params;
         const body = await request.json();
 
-        // Vérifier si le participant existe
         const [checkResult] = await db.query(
             "SELECT id FROM participants WHERE id = ? AND event_id = ?",
             [participantId, eventId]
@@ -94,11 +91,9 @@ export async function PUT(
             );
         }
 
-        // Préparer les données pour la mise à jour
         const updateFields = [];
         const updateValues = [];
 
-        // Ajouter chaque champ à mettre à jour
         if (body.status !== undefined) {
             updateFields.push("status = ?");
             updateValues.push(body.status);
@@ -132,7 +127,6 @@ export async function PUT(
             updateValues.push(new Date(body.feedback_submitted_at));
         }
 
-        // Si aucun champ à mettre à jour, retourner le participant tel quel
         if (updateFields.length === 0) {
             const [rows] = await db.query(`
         SELECT p.*, 
@@ -144,7 +138,6 @@ export async function PUT(
 
             const row = (rows as any[])[0];
 
-            // Générer le QR code
             const qrCodeData = JSON.stringify({
                 id: row.id,
                 eventId: row.event_id,
@@ -181,20 +174,16 @@ export async function PUT(
             });
         }
 
-        // Construire la requête de mise à jour
         const updateQuery = `
       UPDATE participants 
       SET ${updateFields.join(", ")} 
       WHERE id = ? AND event_id = ?
     `;
 
-        // Ajouter l'ID du participant et l'ID de l'événement aux valeurs
         updateValues.push(participantId, eventId);
 
-        // Exécuter la mise à jour
         await db.query(updateQuery, updateValues);
 
-        // Récupérer le participant mis à jour
         const [rows] = await db.query(`
       SELECT p.*, 
              u.id as user_id, u.first_name, u.last_name, u.email
@@ -205,7 +194,6 @@ export async function PUT(
 
         const row = (rows as any[])[0];
 
-        // Générer le QR code
         const qrCodeData = JSON.stringify({
             id: row.id,
             eventId: row.event_id,
@@ -258,7 +246,6 @@ export async function DELETE(
     try {
         const { id: eventId, participantId } = params;
 
-        // Récupérer le participant avant de le supprimer
         const [rows] = await db.query(`
       SELECT p.*, 
              u.id as user_id, u.first_name, u.last_name, u.email
@@ -276,7 +263,6 @@ export async function DELETE(
 
         const row = (rows as any[])[0];
 
-        // Générer le QR code
         const qrCodeData = JSON.stringify({
             id: row.id,
             eventId: row.event_id,
@@ -309,7 +295,6 @@ export async function DELETE(
             qrCode: qrCodeDataUrl
         };
 
-        // Supprimer le participant
         await db.query("DELETE FROM participants WHERE id = ? AND event_id = ?", [participantId, eventId]);
 
         return NextResponse.json({
