@@ -66,7 +66,7 @@ export default function ProfilePage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    // Test API connection first
+
     axios
         .get("/api/debug")
         .then((response) => {
@@ -87,7 +87,6 @@ export default function ProfilePage() {
 
       console.log("Fetching user data...")
 
-      // Récupérer les données du profil utilisateur
       const profileResponse = await axios.get("/api/users/me")
       console.log("Profile response:", profileResponse.data)
 
@@ -106,7 +105,6 @@ export default function ProfilePage() {
         })
 
         try {
-          // Récupérer les événements créés par l'utilisateur
           const eventsResponse = await axios.get(`/api/events?organizer_id=${userData.id}`)
           console.log("Events response:", eventsResponse.data)
 
@@ -115,11 +113,9 @@ export default function ProfilePage() {
           }
         } catch (eventsError) {
           console.error("Error fetching events:", eventsError)
-          // Ne pas échouer complètement si les événements ne peuvent pas être récupérés
         }
 
         try {
-          // Récupérer les statistiques
           const statsResponse = await axios.get("/api/dashboard/stats")
           console.log("Stats response:", statsResponse.data)
 
@@ -133,14 +129,12 @@ export default function ProfilePage() {
           }
         } catch (statsError) {
           console.error("Error fetching stats:", statsError)
-          // Ne pas échouer complètement si les statistiques ne peuvent pas être récupérées
         }
       }
     } catch (error: any) {
       console.error("Erreur lors de la récupération des données:", error)
       setError(error.response?.data?.error || "Impossible de charger les données du profil")
 
-      // Si l'erreur est une 401, rediriger vers la page de connexion
       if (error.response?.status === 401) {
         toast({
           title: "Session expirée",
@@ -179,7 +173,6 @@ export default function ProfilePage() {
           description: "Vos informations ont été mises à jour avec succès.",
         })
 
-        // Mettre à jour les données du profil
         setProfile(response.data.data)
       }
     } catch (error: any) {
@@ -253,7 +246,6 @@ export default function ProfilePage() {
           description: "Votre photo de profil a été mise à jour avec succès.",
         })
 
-        // Mettre à jour l'image du profil
         setProfile((prev) => (prev ? { ...prev, profile_image: response.data.data.profile_image } : null))
       }
     } catch (error: any) {
