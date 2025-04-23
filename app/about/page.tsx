@@ -26,8 +26,8 @@ export default function AboutPage() {
                             >
                                 À propos de{" "}
                                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-gray-600 dark:from-white dark:to-gray-400">
-                  Kivu Event
-                </span>
+                                    Kivu Event
+                                </span>
                             </motion.h1>
                             <motion.p
                                 className="text-lg md:text-xl mb-8 text-gray-700 dark:text-gray-300"
@@ -171,7 +171,7 @@ export default function AboutPage() {
                                 <div className="flex flex-col md:flex-row items-center gap-8">
                                     <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex-shrink-0">
                                         <Image
-                                            src="/placeholder.svg?height=128&width=128"
+                                            src="/profil.JPG"
                                             alt="Anelka MD"
                                             width={128}
                                             height={128}
@@ -187,12 +187,16 @@ export default function AboutPage() {
                                             Nous croyons que chaque événement est une opportunité de créer des connexions significatives."
                                         </p>
                                         <div className="flex gap-4">
-                                            <Button variant="outline" size="sm">
-                                                LinkedIn
-                                            </Button>
-                                            <Button variant="outline" size="sm">
-                                                Twitter
-                                            </Button>
+                                            <Link href="https://x.com/Anelka_MD">
+                                                <Button variant="outline" size="sm">
+                                                    Twitter
+                                                </Button>
+                                            </Link>
+                                            <Link href="https://www.linkedin.com/in/anelkamd/">
+                                                <Button variant="outline" size="sm">
+                                                    Linkedin
+                                                </Button>
+                                            </Link>
                                         </div>
                                     </div>
                                 </div>
