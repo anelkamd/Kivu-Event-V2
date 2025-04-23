@@ -66,34 +66,17 @@ export default function ProfilePage() {
   const { toast } = useToast()
 
   useEffect(() => {
-
-    axios
-        .get("/api/debug")
-        .then((response) => {
-          console.log("Debug endpoint response:", response.data)
-          fetchUserData()
-        })
-        .catch((err) => {
-          console.error("Debug endpoint error:", err)
-          setError("Impossible de se connecter à l'API. Veuillez réessayer plus tard.")
-          setIsLoading(false)
-        })
+    fetchUserData()
   }, [])
 
   const fetchUserData = async () => {
     try {
       setIsLoading(true)
       setError(null)
-
-      console.log("Fetching user data...")
-
       const profileResponse = await axios.get("/api/users/me")
-      console.log("Profile response:", profileResponse.data)
-
       if (profileResponse.data.success) {
         const userData = profileResponse.data.data
         setProfile(userData)
-
         setFormData({
           first_name: userData.first_name || "",
           last_name: userData.last_name || "",
@@ -106,8 +89,6 @@ export default function ProfilePage() {
 
         try {
           const eventsResponse = await axios.get(`/api/events?organizer_id=${userData.id}`)
-          console.log("Events response:", eventsResponse.data)
-
           if (eventsResponse.data.success) {
             setEvents(eventsResponse.data.data)
           }
@@ -117,8 +98,6 @@ export default function ProfilePage() {
 
         try {
           const statsResponse = await axios.get("/api/dashboard/stats")
-          console.log("Stats response:", statsResponse.data)
-
           if (statsResponse.data.success) {
             setStats({
               totalEvents: statsResponse.data.data.totalEvents || 0,
@@ -130,21 +109,22 @@ export default function ProfilePage() {
         } catch (statsError) {
           console.error("Error fetching stats:", statsError)
         }
+      } else {
+        setError("Impossible de récupérer les données du profil")
       }
-    } catch (error: any) {
-      console.error("Erreur lors de la récupération des données:", error)
-      setError(error.response?.data?.error || "Impossible de charger les données du profil")
-
-      if (error.response?.status === 401) {
+    } catch (profileError: any) {
+      if (profileError.response?.status === 401) {
+        setError("Session expirée. Veuillez vous reconnecter.")
         toast({
           title: "Session expirée",
           description: "Veuillez vous reconnecter pour accéder à votre profil.",
           variant: "destructive",
         })
-
         setTimeout(() => {
           router.push("/login")
         }, 2000)
+      } else {
+        setError(profileError.response?.data?.error || "Impossible de charger les données du profil")
       }
     } finally {
       setIsLoading(false)
@@ -158,7 +138,6 @@ export default function ProfilePage() {
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
-
     try {
       const response = await axios.put("/api/users/me", {
         first_name: formData.first_name,
@@ -166,17 +145,14 @@ export default function ProfilePage() {
         email: formData.email,
         phone_number: formData.phone_number,
       })
-
       if (response.data.success) {
         toast({
           title: "Profil mis à jour",
           description: "Vos informations ont été mises à jour avec succès.",
         })
-
         setProfile(response.data.data)
       }
     } catch (error: any) {
-      console.error("Erreur lors de la mise à jour du profil:", error)
       toast({
         title: "Erreur",
         description: error.response?.data?.error || "Impossible de mettre à jour le profil",
@@ -187,7 +163,6 @@ export default function ProfilePage() {
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (formData.new_password !== formData.confirm_password) {
       toast({
         title: "Erreur",
@@ -196,19 +171,16 @@ export default function ProfilePage() {
       })
       return
     }
-
     try {
       const response = await axios.put("/api/users/me/password", {
         current_password: formData.current_password,
         new_password: formData.new_password,
       })
-
       if (response.data.success) {
         toast({
           title: "Mot de passe mis à jour",
           description: "Votre mot de passe a été changé avec succès.",
         })
-
         setFormData((prev) => ({
           ...prev,
           current_password: "",
@@ -217,7 +189,6 @@ export default function ProfilePage() {
         }))
       }
     } catch (error: any) {
-      console.error("Erreur lors de la mise à jour du mot de passe:", error)
       toast({
         title: "Erreur",
         description: error.response?.data?.error || "Impossible de mettre à jour le mot de passe",
@@ -229,27 +200,20 @@ export default function ProfilePage() {
   const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     const formData = new FormData()
     formData.append("profile_image", file)
-
     try {
       const response = await axios.post("/api/users/me/profile-image", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       })
-
       if (response.data.success) {
         toast({
           title: "Image mise à jour",
           description: "Votre photo de profil a été mise à jour avec succès.",
         })
-
         setProfile((prev) => (prev ? { ...prev, profile_image: response.data.data.profile_image } : null))
       }
     } catch (error: any) {
-      console.error("Erreur lors de la mise à jour de l'image:", error)
       toast({
         title: "Erreur",
         description: error.response?.data?.error || "Impossible de mettre à jour la photo de profil",
@@ -301,9 +265,7 @@ export default function ProfilePage() {
               </div>
               <p className="mb-4">{error}</p>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => router.push("/dashboard")}>
-                  Retour au tableau de bord
-                </Button>
+                <Button variant="outline" onClick={() => router.push("/dashboard")}>Retour au tableau de bord</Button>
                 <Button onClick={() => fetchUserData()}>Réessayer</Button>
               </div>
             </CardContent>
@@ -516,12 +478,12 @@ export default function ProfilePage() {
                               <div>
                                 <h3 className="font-medium">{event.title}</h3>
                                 <div className="flex items-center mt-1 text-sm text-muted-foreground">
-                                  <Calendar className="h-4 w-4 mr-1" />
+                                  <Calendar className="h-4 w-4 mr-1"/>
                                   <span>{formatDate(event.start_date)}</span>
                                 </div>
                                 {event.venue && (
                                     <div className="flex items-center mt-1 text-sm text-muted-foreground">
-                                      <MapPin className="h-4 w-4 mr-1" />
+                                      <MapPin className="h-4 w-4 mr-1"/>
                                       <span>{event.venue.name}</span>
                                     </div>
                                 )}
@@ -531,12 +493,12 @@ export default function ProfilePage() {
                                 <div className="flex ml-2">
                                   <Button variant="ghost" size="icon" asChild>
                                     <Link href={`/events/details/${event.id}`}>
-                                      <Eye className="h-4 w-4" />
+                                      <Eye className="h-4 w-4"/>
                                     </Link>
                                   </Button>
                                   <Button variant="ghost" size="icon" asChild>
                                     <Link href={`/events/edit/${event.id}`}>
-                                      <Edit className="h-4 w-4" />
+                                      <Edit className="h-4 w-4"/>
                                     </Link>
                                   </Button>
                                 </div>

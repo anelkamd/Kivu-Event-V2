@@ -1,42 +1,63 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import jwt from "jsonwebtoken"
 
 export function middleware(request: NextRequest) {
-    const token = request.cookies.get("token")?.value || ""
-    const path = request.nextUrl.pathname
+    // Journaliser les requêtes API pour le débogage
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+        console.log(`[Middleware] Requête API: ${request.method} ${request.nextUrl.pathname}`)
 
-    // Routes qui nécessitent une authentification
-    const protectedRoutes = ["/dashboard", "/events/create", "/profile"]
+        // Pour les routes API qui nécessitent une authentification
+        if (
+            request.nextUrl.pathname.startsWith("/api/users/me") ||
+            request.nextUrl.pathname.startsWith("/api/dashboard")
+        ) {
+            // Récupérer le token
+            const token =
+                request.headers.get("Authorization")?.replace("Bearer ", "") ||
+                request.cookies.get("token")?.value
 
-    // Routes accessibles uniquement aux utilisateurs non authentifiés
-    const authRoutes = ["/login", "/register"]
+            console.log("[Middleware] Token reçu:", token)
 
-    // Vérifier si l'utilisateur essaie d'accéder à une route protégée sans être authentifié
-    const isProtectedRoute = protectedRoutes.some((route) => path.startsWith(route))
-    const isAuthRoute = authRoutes.includes(path)
+            if (token) {
+                try {
+                    // Décoder le token pour obtenir l'ID utilisateur
+                    const decoded = jwt.verify(
+                        token,
+                        process.env.JWT_SECRET || "default_secret_key"
+                    ) as any
 
-    console.log(`Middleware checking path: ${path}, token: ${token ? "exists" : "missing"}`)
-    console.log(`isProtectedRoute: ${isProtectedRoute}, isAuthRoute: ${isAuthRoute}`)
+                    console.log("[Middleware] Token décodé:", decoded)
 
-    // Si l'utilisateur n'est pas authentifié et essaie d'accéder à une route protégée
-    if (isProtectedRoute && !token) {
-        console.log("Redirecting to login")
-        const url = new URL("/login", request.url)
-        url.searchParams.set("callbackUrl", encodeURI(path))
-        return NextResponse.redirect(url)
-    }
+                    const userId = decoded.userId || decoded.id || decoded.sub
 
-    // Si l'utilisateur est authentifié et essaie d'accéder à une route d'authentification
-    if (isAuthRoute && token) {
-        console.log("Redirecting to dashboard")
-        return NextResponse.redirect(new URL("/dashboard", request.url))
+                    if (userId) {
+                        const requestHeaders = new Headers(request.headers)
+                        requestHeaders.set("X-User-ID", userId)
+
+                        console.log("[Middleware] X-User-ID ajouté:", userId)
+
+                        return NextResponse.next({
+                            request: {
+                                headers: requestHeaders,
+                            },
+                        })
+                    } else {
+                        console.warn("[Middleware] Aucun userId trouvé dans le token.")
+                    }
+                } catch (error) {
+                    console.error("[Middleware] Erreur de décodage du token:", error)
+                }
+            } else {
+                console.warn("[Middleware] Aucun token trouvé.")
+            }
+        }
     }
 
     return NextResponse.next()
 }
 
-// Configurer les chemins sur lesquels le middleware s'exécute
+// Exécuter le middleware uniquement sur les routes API
 export const config = {
-    matcher: ["/dashboard/:path*", "/events/create/:path*", "/profile/:path*", "/login", "/register"],
+    matcher: "/api/:path*",
 }
-

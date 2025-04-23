@@ -1,4 +1,4 @@
-# Kivu Event
+# Kivu Event V1.0.0
 
 ## Plateforme de Gestion des Événements d'Entreprise
 

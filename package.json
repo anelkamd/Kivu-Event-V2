@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "main": "server.js",
+  "proxy": "http://localhost:5000",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
