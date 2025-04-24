@@ -7,6 +7,16 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Configuration pour les routes API
+  experimental: {
+    appDir: true,
+  },
+  // Afficher plus de logs pour le débogage
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -16,12 +26,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  experimental: {
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
-  },
 }
+
 
 mergeConfig(nextConfig, userConfig)
 
