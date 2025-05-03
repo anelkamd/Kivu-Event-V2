@@ -115,13 +115,13 @@ CREATE TABLE IF NOT EXISTS participants (
 
 -- Table des notifications
 CREATE TABLE IF NOT EXISTS notifications (
-    id VARCHAR(36) PRIMARY KEY, -- Suppression de DEFAULT (UUID()) car non valide ici
+    id VARCHAR(36) PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     type ENUM('info', 'success', 'warning', 'error') DEFAULT 'info',
-    is_read TINYINT(1) DEFAULT 0, -- Changement de `read` à `is_read`
-    link VARCHAR(255), -- Suppression de DEFAULT NULL (déjà implicite)
+    is_read TINYINT(1) DEFAULT 0,
+    link VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
