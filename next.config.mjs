@@ -1,17 +1,5 @@
-let userConfig = undefined
-try {
-  userConfig = await import('./v0-user-next.config')
-} catch (e) {
-  // ignore error
-}
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Configuration pour les routes API
-  experimental: {
-    appDir: true,
-  },
-  // Afficher plus de logs pour le débogage
   logging: {
     fetches: {
       fullUrl: true,
@@ -26,29 +14,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-}
-
-
-mergeConfig(nextConfig, userConfig)
-
-function mergeConfig(nextConfig, userConfig) {
-  if (!userConfig) {
-    return
-  }
-
-  for (const key in userConfig) {
-    if (
-      typeof nextConfig[key] === 'object' &&
-      !Array.isArray(nextConfig[key])
-    ) {
-      nextConfig[key] = {
-        ...nextConfig[key],
-        ...userConfig[key],
-      }
-    } else {
-      nextConfig[key] = userConfig[key]
-    }
-  }
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  },
 }
 
 export default nextConfig
