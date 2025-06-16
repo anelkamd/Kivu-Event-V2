@@ -27,20 +27,21 @@ export default function Register() {
   const password = watch("password", "")
 
   const onSubmit = async (data: any) => {
-    setIsLoading(true)
-    try {
-      await registerUser({
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        password: data.password,
-      })
-    } catch (error) {
-      console.error("Registration error:", error)
-    } finally {
-      setIsLoading(false)
-    }
+  setIsLoading(true)
+  try {
+    await registerUser(
+      data.firstName,
+      data.lastName,
+      data.email,
+      data.password
+    )
+  } catch (error) {
+    console.error("Registration error:", error)
+  } finally {
+    setIsLoading(false)
   }
+}
+
 
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true)
@@ -232,7 +233,6 @@ export default function Register() {
               <div className="flex items-center">
                 <input
                     id="terms"
-                    name="terms"
                     type="checkbox"
                     required
                     className="h-4 w-4 rounded bg-gray-800 border-gray-700 text-white focus:ring-white/25"
