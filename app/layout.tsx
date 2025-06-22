@@ -8,6 +8,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
     title: "Kivu Event",
     description: "Plateforme de gestion d'événements d'entreprise",
+    icons: "/logo.png"
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

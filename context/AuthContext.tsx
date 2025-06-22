@@ -27,17 +27,14 @@ interface AuthContextType {
   clearError: () => void
 }
 
-// Créer le contexte
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Provider component
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
-  // Vérifier si l'utilisateur est connecté au chargement
   useEffect(() => {
     const checkUserLoggedIn = async () => {
       try {
