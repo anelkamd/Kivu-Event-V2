@@ -26,20 +26,11 @@ export function Sidebar() {
       icon: Inbox,
     },
     {
-      name: "Événements",
-      href: "/events",
-      icon: Calendar,
-    },
-    {
       name: "Participants",
       href: "/dashboard/participants",
       icon: Users,
     },
-    {
-      name: "Lieux",
-      href: "/dashboard/venues",
-      icon: MapPin,
-    },
+    
   ]
 
   const settingsItems = [
@@ -48,11 +39,6 @@ export function Sidebar() {
       href: "/dashboard/profile",
       icon: User,
     },
-    {
-      name: "Paramètres",
-      href: "/dashboard/settings",
-      icon: Settings,
-    }
   ]
 
   return (

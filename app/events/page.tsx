@@ -9,16 +9,16 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Pagination from "@/components/ui/pagination"
-import { CalendarDays, MapPin, Users, Eye, Edit, Clock, Euro, Filter } from "lucide-react"
+import { CalendarDays, MapPin, Users, Eye, Edit, UserPlus, Clock, Euro, Share2, Filter } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-type EventType = "my-events" | "my-participations"
+type EventType = "all" | "my-events" | "my-participations" | "public"
 
 export default function EventsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState<EventType>("my-events")
+  const [activeTab, setActiveTab] = useState<EventType>("all")
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState<string>("all")
 
@@ -31,18 +31,43 @@ export default function EventsPage() {
       limit,
       search: searchTerm || undefined,
       type: filterType !== "all" ? filterType : undefined,
+      tab: activeTab,
     }
-  }, [page, limit, searchTerm, filterType])
+  }, [page, limit, searchTerm, filterType, activeTab])
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["events", activeTab, queryParams],
+    queryKey: ["events", queryParams],
     queryFn: async () => {
-      const endpoint = activeTab === "my-events" ? "/api/events/my-events" : "/api/events/my-participations"
+      let endpoint = "/api/events"
+
+      switch (activeTab) {
+        case "my-events":
+          endpoint = "/api/events/my-events"
+          break
+        case "my-participations":
+          endpoint = "/api/events/my-participations"
+          break
+        case "public":
+          endpoint = "/api/events/public"
+          break
+        default:
+          endpoint = "/api/events"
+      }
+
       const response = await axios.get(endpoint, { params: queryParams })
       return response.data
     },
     placeholderData: (previousData) => previousData,
   })
+
+  const handleJoinEvent = async (eventId: string) => {
+    try {
+      await axios.post(`/api/events/${eventId}/join`)
+      refetch()
+    } catch (error) {
+      console.error("Erreur lors de l'inscription:", error)
+    }
+  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("fr-FR", {
@@ -144,7 +169,7 @@ export default function EventsPage() {
 
           <div className="flex items-center space-x-2">
             <Avatar className="w-6 h-6">
-              <AvatarImage src={event.organizer?.profile_image || "/placeholder.svg?height=24&width=24"} />
+              <AvatarImage src={event.organizer?.profile_image || "/placeholder.svg"} />
               <AvatarFallback className="text-xs">{event.organizer?.name?.charAt(0) || "O"}</AvatarFallback>
             </Avatar>
             <span className="text-xs text-gray-500 truncate max-w-20">{event.organizer?.name || "Organisateur"}</span>
@@ -153,26 +178,34 @@ export default function EventsPage() {
       </CardContent>
 
       <CardFooter className="pt-0 flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1 bg-transparent"
-          onClick={() => router.push(`/events/${event.id}`)}
-        >
+        <Button variant="outline" size="sm" className="flex-1" onClick={() => router.push(`/events/${event.id}`)}>
           <Eye className="w-4 h-4 mr-1" />
           Détails
         </Button>
 
-        {activeTab === "my-events" && (
+        {activeTab === "my-events" ? (
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 bg-transparent"
+            className="flex-1"
             onClick={() => router.push(`/dashboard/events/${event.id}/edit`)}
           >
             <Edit className="w-4 h-4 mr-1" />
             Modifier
           </Button>
+        ) : (
+          activeTab !== "my-participations" &&
+          event.status === "published" && (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={() => handleJoinEvent(event.id)}
+              disabled={event.participants_count >= event.capacity}
+            >
+              <UserPlus className="w-4 h-4 mr-1" />
+              {event.participants_count >= event.capacity ? "Complet" : "S'inscrire"}
+            </Button>
+          )
         )}
       </CardFooter>
     </Card>
@@ -199,41 +232,40 @@ export default function EventsPage() {
   )
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Mes Événements</h1>
-        <p className="mt-2 text-gray-600">Gérez vos événements créés et vos participations</p>
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Événements</h1>
+        <p className="max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400">
+          Découvrez, créez et participez aux événements qui vous intéressent
+        </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap mb-8 border-b bg-white rounded-t-lg">
-        <button
-          onClick={() => setActiveTab("my-events")}
-          className={`flex items-center px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === "my-events"
-              ? "border-blue-500 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-          }`}
-        >
-          <Edit className="w-4 h-4 mr-2" />
-          Mes événements créés
-        </button>
-        <button
-          onClick={() => setActiveTab("my-participations")}
-          className={`flex items-center px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === "my-participations"
-              ? "border-blue-500 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-          }`}
-        >
-          <Users className="w-4 h-4 mr-2" />
-          Mes participations
-        </button>
+      <div className="flex flex-wrap justify-center mb-8 border-b">
+        {[
+          { key: "all", label: "Tous les événements", icon: CalendarDays },
+          { key: "my-events", label: "Mes événements", icon: Edit },
+          { key: "my-participations", label: "Mes participations", icon: Users },
+          { key: "public", label: "Événements publics", icon: Share2 },
+        ].map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key as EventType)}
+            className={`flex items-center px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === key
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            <Icon className="w-4 h-4 mr-2" />
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-white p-4 rounded-lg shadow-sm">
+      <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="flex-1">
           <Input
             placeholder="Rechercher un événement..."
@@ -268,7 +300,7 @@ export default function EventsPage() {
             </div>
             <h3 className="text-lg font-medium text-red-800 mb-2">Erreur de chargement</h3>
             <p className="text-red-600 text-sm">Une erreur s'est produite lors du chargement des événements.</p>
-            <Button variant="outline" size="sm" className="mt-4 bg-transparent" onClick={() => refetch()}>
+            <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>
               Réessayer
             </Button>
           </div>
@@ -293,13 +325,15 @@ export default function EventsPage() {
         </>
       ) : (
         <div className="text-center py-16">
-          <div className="bg-white border-2 border-dashed border-gray-200 rounded-lg p-8 max-w-md mx-auto">
+          <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-8 max-w-md mx-auto">
             <CalendarDays className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun événement trouvé</h3>
             <p className="text-gray-500 text-sm mb-4">
               {activeTab === "my-events"
                 ? "Vous n'avez pas encore créé d'événement."
-                : "Vous ne participez à aucun événement pour le moment."}
+                : activeTab === "my-participations"
+                  ? "Vous ne participez à aucun événement pour le moment."
+                  : "Aucun événement ne correspond à vos critères de recherche."}
             </p>
             {activeTab === "my-events" && (
               <Button onClick={() => router.push("/dashboard/events/create")}>Créer un événement</Button>
