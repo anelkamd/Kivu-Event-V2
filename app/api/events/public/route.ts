@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import db from "@/lib/db"
+import { sequelize } from "@/config/database.js"
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,8 +12,9 @@ export async function GET(request: NextRequest) {
 
     let query = `
       SELECT e.*, 
-             u.id as organizer_id, u.first_name as organizer_first_name, u.last_name as organizer_last_name,
-             v.id as venue_id, v.name as venue_name, v.street as venue_address, v.capacity as venue_capacity,
+             CONCAT(u.first_name, ' ', u.last_name) as organizer_name,
+             u.profile_image as organizer_image,
+             v.name as venue_name, v.street as venue_address,
              COUNT(p.id) as participants_count
       FROM events e
       LEFT JOIN users u ON e.organizer_id = u.id
@@ -37,7 +38,9 @@ export async function GET(request: NextRequest) {
     query += " GROUP BY e.id ORDER BY e.start_date ASC LIMIT ? OFFSET ?"
     queryParams.push(limit, offset)
 
-    const [rows] = await db.query(query, queryParams)
+    const [rows] = await sequelize.query(query, {
+      replacements: queryParams,
+    })
 
     // Compter le total
     let countQuery = `SELECT COUNT(DISTINCT e.id) as total FROM events e WHERE e.status = 'published'`
@@ -53,8 +56,11 @@ export async function GET(request: NextRequest) {
       countParams.push(type)
     }
 
-    const [countRows] = await db.query(countQuery, countParams)
-    const total = (countRows as any[])[0].total
+    const [countResult] = await sequelize.query(countQuery, {
+      replacements: countParams,
+    })
+
+    const total = (countResult as any[])[0]?.total || 0
 
     const events = (rows as any[]).map((row) => ({
       id: row.id,
@@ -67,17 +73,17 @@ export async function GET(request: NextRequest) {
       registration_deadline: row.registration_deadline,
       status: row.status,
       image: row.image,
-      price: row.price,
-      participants_count: row.participants_count,
+      price: row.price || 0,
+      participants_count: row.participants_count || 0,
       organizer: {
         id: row.organizer_id,
-        name: `${row.organizer_first_name || ""} ${row.organizer_last_name || ""}`.trim(),
+        name: row.organizer_name || "Organisateur",
+        profile_image: row.organizer_image,
       },
       venue: {
         id: row.venue_id,
-        name: row.venue_name,
+        name: row.venue_name || "Lieu à définir",
         address: row.venue_address,
-        capacity: row.venue_capacity,
       },
     }))
 
@@ -93,6 +99,13 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error("Error fetching public events:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch events" }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to fetch public events",
+        details: error.message,
+      },
+      { status: 500 },
+    )
   }
 }

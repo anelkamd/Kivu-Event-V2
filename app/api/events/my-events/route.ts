@@ -1,101 +1,150 @@
 import { type NextRequest, NextResponse } from "next/server"
-import db from "@/lib/db"
+import jwt from "jsonwebtoken"
+import pool from "@/lib/db"
+
+// Interface pour le payload JWT
+interface JWTPayload {
+  userId?: string
+  id?: string
+  sub?: string
+  email?: string
+  role?: string
+  iat?: number
+  exp?: number
+}
+
+// Fonction utilitaire pour extraire l'ID utilisateur du token
+function getUserIdFromToken(token: string): string | null {
+  try {
+    const jwtSecret = process.env.JWT_SECRET || "default_secret_key"
+    const decoded = jwt.verify(token, jwtSecret) as JWTPayload
+    return decoded.userId || decoded.id || decoded.sub || null
+  } catch (error) {
+    console.error("Erreur de décodage du token:", error)
+    return null
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
+    console.log("=== API My Events ===")
+
+    // Récupérer le token depuis l'en-tête Authorization
+    const authHeader = request.headers.get("authorization")
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Token d'authentification manquant",
+        },
+        { status: 401 },
+      )
+    }
+
+    const token = authHeader.substring(7)
+    const userId = getUserIdFromToken(token)
+
+    if (!userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Token invalide",
+        },
+        { status: 401 },
+      )
+    }
+
+    console.log("Récupération des événements pour l'utilisateur:", userId)
+
+    // Récupérer les paramètres de requête
     const { searchParams } = new URL(request.url)
-    const page = Number.parseInt(searchParams.get("page") || "1")
-    const limit = Number.parseInt(searchParams.get("limit") || "12")
-    const search = searchParams.get("search")
-    const type = searchParams.get("type")
-    const offset = (page - 1) * limit
+    const limit = Number.parseInt(searchParams.get("limit") || "10")
+    const offset = Number.parseInt(searchParams.get("offset") || "0")
 
-    // TODO: Récupérer l'ID de l'utilisateur connecté depuis la session/token
-    const currentUserId = "current-user-id" // À remplacer par la vraie logique d'auth
+    try {
+      // Récupérer les événements créés par l'utilisateur
+      const [rows] = await pool.execute(
+        `SELECT 
+          e.id,
+          e.title,
+          e.description,
+          e.type,
+          e.start_date,
+          e.end_date,
+          e.capacity,
+          e.status,
+          e.image,
+          e.price,
+          e.created_at,
+          COALESCE(p.participant_count, 0) as participants_count,
+          v.name as venue_name,
+          v.address as venue_address,
+          v.city as venue_city
+        FROM events e
+        LEFT JOIN venues v ON e.venue_id = v.id
+        LEFT JOIN (
+          SELECT event_id, COUNT(*) as participant_count
+          FROM participants
+          WHERE status = 'registered'
+          GROUP BY event_id
+        ) p ON e.id = p.event_id
+        WHERE e.organizer_id = ?
+        ORDER BY e.created_at DESC
+        LIMIT ? OFFSET ?`,
+        [userId, limit, offset],
+      )
 
-    let query = `
-      SELECT e.*, 
-             u.id as organizer_id, u.first_name as organizer_first_name, u.last_name as organizer_last_name,
-             v.id as venue_id, v.name as venue_name, v.street as venue_address, v.capacity as venue_capacity,
-             COUNT(p.id) as participants_count
-      FROM events e
-      LEFT JOIN users u ON e.organizer_id = u.id
-      LEFT JOIN venues v ON e.venue_id = v.id
-      LEFT JOIN participants p ON e.id = p.event_id AND p.status = 'registered'
-      WHERE e.organizer_id = ?
-    `
+      const events = (rows as any[]).map((event) => ({
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        type: event.type,
+        start_date: event.start_date,
+        end_date: event.end_date,
+        capacity: event.capacity,
+        status: event.status,
+        image: event.image,
+        price: event.price,
+        participants_count: event.participants_count,
+        venue: event.venue_name
+          ? {
+              name: event.venue_name,
+              address: event.venue_address,
+              city: event.venue_city,
+            }
+          : null,
+      }))
 
-    const queryParams: any[] = [currentUserId]
+      console.log(`${events.length} événements trouvés pour l'utilisateur ${userId}`)
 
-    if (search) {
-      query += " AND (e.title LIKE ? OR e.description LIKE ?)"
-      queryParams.push(`%${search}%`, `%${search}%`)
+      return NextResponse.json({
+        success: true,
+        message: "Événements récupérés avec succès",
+        data: events,
+        pagination: {
+          limit,
+          offset,
+          total: events.length,
+        },
+      })
+    } catch (dbError) {
+      console.error("Erreur base de données:", dbError)
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Erreur lors de la récupération des événements",
+        },
+        { status: 500 },
+      )
     }
-
-    if (type && type !== "all") {
-      query += " AND e.type = ?"
-      queryParams.push(type)
-    }
-
-    query += " GROUP BY e.id ORDER BY e.created_at DESC LIMIT ? OFFSET ?"
-    queryParams.push(limit, offset)
-
-    const [rows] = await db.query(query, queryParams)
-
-    // Compter le total
-    let countQuery = `SELECT COUNT(DISTINCT e.id) as total FROM events e WHERE e.organizer_id = ?`
-    const countParams = [currentUserId]
-
-    if (search) {
-      countQuery += " AND (e.title LIKE ? OR e.description LIKE ?)"
-      countParams.push(`%${search}%`, `%${search}%`)
-    }
-
-    if (type && type !== "all") {
-      countQuery += " AND e.type = ?"
-      countParams.push(type)
-    }
-
-    const [countRows] = await db.query(countQuery, countParams)
-    const total = (countRows as any[])[0].total
-
-    const events = (rows as any[]).map((row) => ({
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      type: row.type,
-      start_date: row.start_date,
-      end_date: row.end_date,
-      capacity: row.capacity,
-      registration_deadline: row.registration_deadline,
-      status: row.status,
-      image: row.image,
-      price: row.price,
-      participants_count: row.participants_count,
-      organizer: {
-        id: row.organizer_id,
-        name: `${row.organizer_first_name || ""} ${row.organizer_last_name || ""}`.trim(),
+  } catch (error) {
+    console.error("Erreur dans l'API my-events:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Erreur serveur",
       },
-      venue: {
-        id: row.venue_id,
-        name: row.venue_name,
-        address: row.venue_address,
-        capacity: row.venue_capacity,
-      },
-    }))
-
-    return NextResponse.json({
-      success: true,
-      data: events,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    })
-  } catch (error: any) {
-    console.error("Error fetching my events:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch events" }, { status: 500 })
+      { status: 500 },
+    )
   }
 }
