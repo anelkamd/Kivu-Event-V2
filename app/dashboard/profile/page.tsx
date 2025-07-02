@@ -1,241 +1,328 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
-import LoadingSpinner from "@/components/ui/LoadingSpinner"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  User,
-  Calendar,
-  Users,
-  MapPin,
-  Clock,
-  Edit3,
-  Save,
-  X,
-  Camera,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useToast } from "@/hooks/use-toast"
+import  LoadingSpinner  from "@/components/ui/LoadingSpinner"
+import {
   Mail,
   Phone,
   Building,
   Briefcase,
-  AlertCircle,
-  RefreshCw,
+  Calendar,
+  Users,
+  Eye,
+  Edit,
+  Save,
+  X,
+  Download,
+  MapPin,
+  Clock,
 } from "lucide-react"
-import { format } from "date-fns"
-import { fr } from "date-fns/locale"
-import axios from "@/lib/axios"
-import { toast } from "sonner"
 
 interface UserProfile {
   id: string
-  first_name: string
-  last_name: string
+  firstName: string
+  lastName: string
   email: string
   phone?: string
   company?: string
-  job_title?: string
-  profile_image?: string
-  role?: string
-  created_at: string
+  jobTitle?: string
+  profileImage?: string
+  role: string
+  totalEvents: number
+  publishedEvents: number
+  draftEvents: number
+  completedEvents: number
 }
 
 interface Event {
   id: string
   title: string
   description: string
-  type: "conference" | "seminar" | "workshop" | "meeting"
-  start_date: string
-  end_date: string
-  capacity: number
-  status: "draft" | "published" | "cancelled" | "completed"
-  image?: string
+  type: string
+  startDate: string
+  endDate: string
+  capacity?: number
+  status: string
+  participantCount: number
   price: number
-  participants_count: number
-  organizer?: {
-    name: string
-    profile_image?: string
-  }
   venue?: {
     name: string
     address: string
     city: string
   }
-  registration_date?: string
+  createdAt: string
 }
 
-const typeColors = {
-  conference: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  seminar: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-  workshop: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-  meeting: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+interface Participant {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  company?: string
+  jobTitle?: string
+  status: string
+  registrationDate: string
+  hasAccount: boolean
 }
 
-const statusColors = {
-  draft: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
-  published: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-  cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
-  completed: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+interface ParticipantsData {
+  event: {
+    title: string
+    capacity?: number
+    startDate: string
+  }
+  participants: Participant[]
+  statistics: {
+    total: number
+    registered: number
+    attended: number
+    cancelled: number
+    noShow: number
+  }
 }
 
 export default function ProfilePage() {
   const [user, setUser] = useState<UserProfile | null>(null)
-  const [myEvents, setMyEvents] = useState<Event[]>([])
-  const [myParticipations, setMyParticipations] = useState<Event[]>([])
+  const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [editMode, setEditMode] = useState(false)
-  const [editedUser, setEditedUser] = useState<Partial<UserProfile>>({})
-  const [debugInfo, setDebugInfo] = useState<any>(null)
+  const [editData, setEditData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    company: "",
+    jobTitle: "",
+  })
+  const [participantsData, setParticipantsData] = useState<ParticipantsData | null>(null)
+  const [participantsLoading, setParticipantsLoading] = useState(false)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const { toast } = useToast()
 
-  useEffect(() => {
-    fetchUserData()
-  }, [])
-
-  const fetchDebugInfo = async () => {
-    try {
-      const response = await axios.get("/api/debug/user")
-      setDebugInfo(response.data)
-      console.log("Informations de debug:", response.data)
-    } catch (error) {
-      console.error("Erreur lors de la récupération des infos de debug:", error)
-    }
-  }
-
-  const testAuthEndpoint = async () => {
-    try {
-      console.log("Test de l'endpoint /api/auth/me...")
-      const response = await axios.get("/api/auth/me")
-      console.log("Réponse /api/auth/me:", response.data)
-      toast.success("Authentification vérifiée avec succès")
-    } catch (error) {
-      console.error("Erreur /api/auth/me:", error)
-      toast.error("Erreur lors de la vérification de l'authentification")
-    }
-  }
-
-  const fetchUserData = async () => {
+  // Récupérer les données du profil
+  const fetchProfileData = async () => {
     try {
       setLoading(true)
-      console.log("=== Début du chargement des données utilisateur ===")
-
-      // Vérifier le token dans localStorage
       const token = localStorage.getItem("token")
-      console.log("Token dans localStorage:", token ? "présent" : "absent")
 
       if (!token) {
-        console.log("Aucun token trouvé, redirection vers login")
-        window.location.href = "/login"
+        toast({
+          title: "Erreur",
+          description: "Vous devez être connecté pour accéder à cette page",
+          variant: "destructive",
+        })
         return
       }
 
-      // Test de l'endpoint d'authentification d'abord
-      try {
-        console.log("Test de l'authentification...")
-        const authResponse = await axios.get("/api/auth/me")
-        console.log("Authentification réussie:", authResponse.data)
-      } catch (authError) {
-        console.error("Erreur d'authentification:", authError)
-        toast.error("Session expirée, veuillez vous reconnecter")
-        localStorage.removeItem("token")
-        window.location.href = "/login"
-        return
-      }
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
 
-      // Récupérer les informations utilisateur
-      try {
-        console.log("Récupération des informations utilisateur...")
-        const userResponse = await axios.get("/api/users/me")
-        console.log("Réponse utilisateur:", userResponse.data)
+      const data = await response.json()
 
-        if (userResponse.data.success) {
-          setUser(userResponse.data.data)
-          setEditedUser(userResponse.data.data)
-          console.log("Données utilisateur chargées avec succès")
-        } else {
-          console.error("Erreur dans la réponse utilisateur:", userResponse.data.message)
-          toast.error("Erreur lors du chargement du profil")
-        }
-      } catch (userError) {
-        console.error("Erreur lors de la récupération de l'utilisateur:", userError)
-        toast.error("Impossible de charger les informations du profil")
-
-        // Récupérer les informations de debug
-        await fetchDebugInfo()
-      }
-
-      // Récupérer les événements créés (optionnel)
-      try {
-        console.log("Récupération des événements créés...")
-        const eventsResponse = await axios.get("/api/events/my-events?limit=50")
-        console.log("Réponse événements créés:", eventsResponse.data)
-
-        if (eventsResponse.data.success) {
-          setMyEvents(eventsResponse.data.data || [])
-          console.log("Événements créés chargés:", eventsResponse.data.data?.length || 0)
-        }
-      } catch (eventsError) {
-        console.error("Erreur lors de la récupération des événements:", eventsError)
-        setMyEvents([])
-      }
-
-      // Récupérer les participations (optionnel)
-      try {
-        console.log("Récupération des participations...")
-        const participationsResponse = await axios.get("/api/events/my-participations?limit=50")
-        console.log("Réponse participations:", participationsResponse.data)
-
-        if (participationsResponse.data.success) {
-          setMyParticipations(participationsResponse.data.data || [])
-          console.log("Participations chargées:", participationsResponse.data.data?.length || 0)
-        }
-      } catch (participationsError) {
-        console.error("Erreur lors de la récupération des participations:", participationsError)
-        setMyParticipations([])
+      if (data.success) {
+        setUser(data.data.user)
+        setEvents(data.data.events)
+        setEditData({
+          firstName: data.data.user.firstName,
+          lastName: data.data.user.lastName,
+          email: data.data.user.email,
+          phone: data.data.user.phone || "",
+          company: data.data.user.company || "",
+          jobTitle: data.data.user.jobTitle || "",
+        })
+      } else {
+        toast({
+          title: "Erreur",
+          description: data.error || "Erreur lors du chargement du profil",
+          variant: "destructive",
+        })
       }
     } catch (error) {
-      console.error("Erreur générale lors du chargement des données:", error)
-      toast.error("Erreur lors du chargement des données")
+      console.error("Erreur:", error)
+      toast({
+        title: "Erreur",
+        description: "Erreur de connexion au serveur",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
-      console.log("=== Fin du chargement des données ===")
     }
   }
 
-  const handleSaveProfile = async () => {
+  // Récupérer les participants d'un événement
+  const fetchParticipants = async (eventId: string) => {
     try {
-      console.log("Sauvegarde du profil:", editedUser)
-      const response = await axios.put("/api/users/me", editedUser)
+      setParticipantsLoading(true)
+      const token = localStorage.getItem("token")
 
-      if (response.data.success) {
-        setUser(response.data.data)
-        setEditMode(false)
-        toast.success("Profil mis à jour avec succès")
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${eventId}/participants`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setParticipantsData(data.data)
+        setSelectedEventId(eventId)
       } else {
-        toast.error(response.data.message || "Erreur lors de la mise à jour")
+        toast({
+          title: "Erreur",
+          description: data.error || "Erreur lors du chargement des participants",
+          variant: "destructive",
+        })
       }
     } catch (error) {
-      console.error("Erreur lors de la mise à jour:", error)
-      toast.error("Erreur lors de la mise à jour du profil")
+      console.error("Erreur:", error)
+      toast({
+        title: "Erreur",
+        description: "Erreur de connexion au serveur",
+        variant: "destructive",
+      })
+    } finally {
+      setParticipantsLoading(false)
     }
   }
 
-  const handleCancelEdit = () => {
-    setEditedUser(user || {})
-    setEditMode(false)
+  // Mettre à jour le profil
+  const updateProfile = async () => {
+    try {
+      const token = localStorage.getItem("token")
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editData),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setUser((prev) => (prev ? { ...prev, ...data.data } : null))
+        setEditMode(false)
+        toast({
+          title: "Succès",
+          description: "Profil mis à jour avec succès",
+        })
+      } else {
+        toast({
+          title: "Erreur",
+          description: data.error || "Erreur lors de la mise à jour",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Erreur:", error)
+      toast({
+        title: "Erreur",
+        description: "Erreur de connexion au serveur",
+        variant: "destructive",
+      })
+    }
   }
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName?.charAt(0) || ""}${lastName?.charAt(0) || ""}`.toUpperCase()
+  // Exporter les participants en CSV
+  const exportParticipants = () => {
+    if (!participantsData) return
+
+    const csvContent = [
+      ["Prénom", "Nom", "Email", "Téléphone", "Entreprise", "Poste", "Statut", "Date d'inscription"],
+      ...participantsData.participants.map((p) => [
+        p.firstName,
+        p.lastName,
+        p.email,
+        p.phone || "",
+        p.company || "",
+        p.jobTitle || "",
+        p.status,
+        new Date(p.registrationDate).toLocaleDateString("fr-FR"),
+      ]),
+    ]
+      .map((row) => row.join(","))
+      .join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute(
+      "download",
+      `participants-${participantsData.event.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.csv`,
+    )
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
+
+  // Formater la date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("fr-FR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  // Obtenir la couleur du badge selon le statut
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      published: { label: "Publié", variant: "default" as const },
+      draft: { label: "Brouillon", variant: "secondary" as const },
+      completed: { label: "Terminé", variant: "outline" as const },
+      cancelled: { label: "Annulé", variant: "destructive" as const },
+    }
+
+    return statusConfig[status as keyof typeof statusConfig] || { label: status, variant: "secondary" as const }
+  }
+
+  const getParticipantStatusBadge = (status: string) => {
+    const statusConfig = {
+      registered: { label: "Inscrit", variant: "default" as const },
+      attended: { label: "Présent", variant: "default" as const },
+      cancelled: { label: "Annulé", variant: "destructive" as const },
+      "no-show": { label: "Absent", variant: "secondary" as const },
+    }
+
+    return statusConfig[status as keyof typeof statusConfig] || { label: status, variant: "secondary" as const }
+  }
+
+  useEffect(() => {
+    fetchProfileData()
+  }, [])
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner />
       </div>
     )
@@ -243,43 +330,10 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="container mx-auto p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-              Erreur de chargement du profil
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground">
-              Impossible de charger les informations du profil. Cela peut être dû à :
-            </p>
-            <ul className="list-disc pl-6 space-y-1 text-sm text-muted-foreground">
-              <li>Session expirée</li>
-              <li>Problème de connexion à la base de données</li>
-              <li>Token d'authentification invalide</li>
-            </ul>
-
-            <div className="flex gap-2">
-              <Button onClick={fetchUserData}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Réessayer
-              </Button>
-              <Button variant="outline" onClick={testAuthEndpoint}>
-                Tester l'authentification
-              </Button>
-              <Button variant="outline" onClick={fetchDebugInfo}>
-                Informations de debug
-              </Button>
-            </div>
-
-            {debugInfo && (
-              <div className="mt-4 p-4 bg-muted rounded-lg">
-                <h4 className="font-semibold mb-2">Informations de debug :</h4>
-                <pre className="text-xs overflow-auto">{JSON.stringify(debugInfo, null, 2)}</pre>
-              </div>
-            )}
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-96">
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">Erreur lors du chargement du profil</p>
           </CardContent>
         </Card>
       </div>
@@ -287,311 +341,362 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Mon Profil</h1>
-        {!editMode && (
-          <Button onClick={() => setEditMode(true)} variant="outline">
-            <Edit3 className="h-4 w-4 mr-2" />
-            Modifier
-          </Button>
-        )}
-      </div>
-
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="profile">Profil</TabsTrigger>
-          <TabsTrigger value="my-events">Mes Événements ({myEvents.length})</TabsTrigger>
-          <TabsTrigger value="participations">Mes Participations ({myParticipations.length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="profile" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Informations personnelles
+    <div className="container mx-auto py-8 space-y-8">
+      {/* En-tête du profil */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-4">
+            <Avatar className="h-20 w-20">
+              <AvatarImage src={user.profileImage || "/placeholder.svg"} alt={`${user.firstName} ${user.lastName}`} />
+              <AvatarFallback className="text-lg">
+                {user.firstName.charAt(0)}
+                {user.lastName.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <CardTitle className="text-2xl">
+                {user.firstName} {user.lastName}
               </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Photo de profil */}
-              <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={user.profile_image || "/placeholder.svg"} />
-                  <AvatarFallback className="text-lg">{getInitials(user.first_name, user.last_name)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-lg font-semibold">
-                    {user.first_name} {user.last_name}
-                  </h3>
-                  <p className="text-muted-foreground">{user.email}</p>
-                  {user.role && (
-                    <Badge variant="secondary" className="mt-1">
-                      {user.role}
-                    </Badge>
-                  )}
-                  <Button variant="outline" size="sm" className="mt-2 bg-transparent">
-                    <Camera className="h-4 w-4 mr-2" />
-                    Changer la photo
-                  </Button>
-                </div>
+              <CardDescription className="text-lg">
+                {user.jobTitle && user.company
+                  ? `${user.jobTitle} chez ${user.company}`
+                  : user.jobTitle || user.company || "Organisateur d'événements"}
+              </CardDescription>
+              <Badge variant="outline" className="mt-2">
+                {user.role === "admin" ? "Administrateur" : "Utilisateur"}
+              </Badge>
+            </div>
+            <Button variant={editMode ? "outline" : "default"} onClick={() => setEditMode(!editMode)}>
+              {editMode ? <X className="h-4 w-4 mr-2" /> : <Edit className="h-4 w-4 mr-2" />}
+              {editMode ? "Annuler" : "Modifier"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {editMode ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">Prénom</Label>
+                <Input
+                  id="firstName"
+                  value={editData.firstName}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, firstName: e.target.value }))}
+                />
               </div>
-
-              <Separator />
-
-              {/* Formulaire d'édition */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">Prénom</Label>
-                  {editMode ? (
-                    <Input
-                      id="first_name"
-                      value={editedUser.first_name || ""}
-                      onChange={(e) => setEditedUser({ ...editedUser, first_name: e.target.value })}
-                    />
-                  ) : (
-                    <p className="p-2 bg-muted rounded">{user.first_name}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">Nom</Label>
-                  {editMode ? (
-                    <Input
-                      id="last_name"
-                      value={editedUser.last_name || ""}
-                      onChange={(e) => setEditedUser({ ...editedUser, last_name: e.target.value })}
-                    />
-                  ) : (
-                    <p className="p-2 bg-muted rounded">{user.last_name}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    Email
-                  </Label>
-                  {editMode ? (
-                    <Input
-                      id="email"
-                      type="email"
-                      value={editedUser.email || ""}
-                      onChange={(e) => setEditedUser({ ...editedUser, email: e.target.value })}
-                    />
-                  ) : (
-                    <p className="p-2 bg-muted rounded">{user.email}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    Téléphone
-                  </Label>
-                  {editMode ? (
-                    <Input
-                      id="phone"
-                      value={editedUser.phone || ""}
-                      onChange={(e) => setEditedUser({ ...editedUser, phone: e.target.value })}
-                      placeholder="Numéro de téléphone"
-                    />
-                  ) : (
-                    <p className="p-2 bg-muted rounded">{user.phone || "Non renseigné"}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="company" className="flex items-center gap-2">
-                    <Building className="h-4 w-4" />
-                    Entreprise
-                  </Label>
-                  {editMode ? (
-                    <Input
-                      id="company"
-                      value={editedUser.company || ""}
-                      onChange={(e) => setEditedUser({ ...editedUser, company: e.target.value })}
-                      placeholder="Nom de l'entreprise"
-                    />
-                  ) : (
-                    <p className="p-2 bg-muted rounded">{user.company || "Non renseigné"}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="job_title" className="flex items-center gap-2">
-                    <Briefcase className="h-4 w-4" />
-                    Poste
-                  </Label>
-                  {editMode ? (
-                    <Input
-                      id="job_title"
-                      value={editedUser.job_title || ""}
-                      onChange={(e) => setEditedUser({ ...editedUser, job_title: e.target.value })}
-                      placeholder="Intitulé du poste"
-                    />
-                  ) : (
-                    <p className="p-2 bg-muted rounded">{user.job_title || "Non renseigné"}</p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Nom</Label>
+                <Input
+                  id="lastName"
+                  value={editData.lastName}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, lastName: e.target.value }))}
+                />
               </div>
-
-              {editMode && (
-                <div className="flex gap-2 pt-4">
-                  <Button onClick={handleSaveProfile}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Sauvegarder
-                  </Button>
-                  <Button variant="outline" onClick={handleCancelEdit}>
-                    <X className="h-4 w-4 mr-2" />
-                    Annuler
-                  </Button>
-                </div>
-              )}
-
-              <Separator />
-
-              <div className="text-sm text-muted-foreground">
-                <p>Membre depuis le {format(new Date(user.created_at), "dd MMMM yyyy", { locale: fr })}</p>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={editData.email}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, email: e.target.value }))}
+                />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="my-events" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Événements que j'ai créés
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {myEvents.length === 0 ? (
-                <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Vous n'avez créé aucun événement</p>
-                  <Button className="mt-4" onClick={() => (window.location.href = "/dashboard/events/create")}>
-                    Créer mon premier événement
-                  </Button>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Téléphone</Label>
+                <Input
+                  id="phone"
+                  value={editData.phone}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, phone: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="company">Entreprise</Label>
+                <Input
+                  id="company"
+                  value={editData.company}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, company: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="jobTitle">Poste</Label>
+                <Input
+                  id="jobTitle"
+                  value={editData.jobTitle}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, jobTitle: e.target.value }))}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Button onClick={updateProfile} className="w-full">
+                  <Save className="h-4 w-4 mr-2" />
+                  Sauvegarder les modifications
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <Mail className="h-5 w-5 text-muted-foreground" />
+                  <span>{user.email}</span>
                 </div>
-              ) : (
-                <div className="grid gap-4">
-                  {myEvents.map((event) => (
-                    <Card key={event.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold">{event.title}</h3>
-                              <Badge className={typeColors[event.type]}>{event.type}</Badge>
-                              <Badge className={statusColors[event.status]}>{event.status}</Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{event.description}</p>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                {format(new Date(event.start_date), "dd/MM/yyyy HH:mm")}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Users className="h-4 w-4" />
-                                {event.participants_count}/{event.capacity}
-                              </div>
-                              {event.venue && (
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="h-4 w-4" />
-                                  {event.venue.name}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => (window.location.href = `/dashboard/events/${event.id}`)}
-                          >
-                            Voir détails
-                          </Button>
+                {user.phone && (
+                  <div className="flex items-center space-x-3">
+                    <Phone className="h-5 w-5 text-muted-foreground" />
+                    <span>{user.phone}</span>
+                  </div>
+                )}
+                {user.company && (
+                  <div className="flex items-center space-x-3">
+                    <Building className="h-5 w-5 text-muted-foreground" />
+                    <span>{user.company}</span>
+                  </div>
+                )}
+                {user.jobTitle && (
+                  <div className="flex items-center space-x-3">
+                    <Briefcase className="h-5 w-5 text-muted-foreground" />
+                    <span>{user.jobTitle}</span>
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold">{user.totalEvents}</div>
+                    <p className="text-xs text-muted-foreground">Total événements</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold text-green-600">{user.publishedEvents}</div>
+                    <p className="text-xs text-muted-foreground">Publiés</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold text-yellow-600">{user.draftEvents}</div>
+                    <p className="text-xs text-muted-foreground">Brouillons</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold text-blue-600">{user.completedEvents}</div>
+                    <p className="text-xs text-muted-foreground">Terminés</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Liste des événements */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Calendar className="h-5 w-5 mr-2" />
+            Mes événements ({events.length})
+          </CardTitle>
+          <CardDescription>Liste de tous les événements que vous avez créés</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {events.length === 0 ? (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Vous n'avez pas encore créé d'événement</p>
+              <Button className="mt-4" onClick={() => (window.location.href = "/dashboard/events/create")}>
+                Créer mon premier événement
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Titre</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Lieu</TableHead>
+                    <TableHead>Participants</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {events.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{event.title}</div>
+                          <div className="text-sm text-muted-foreground line-clamp-1">{event.description}</div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{event.type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{formatDate(event.startDate)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {event.venue ? (
+                          <div className="flex items-center space-x-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{event.venue.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Non défini</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            {event.participantCount}
+                            {event.capacity && `/${event.capacity}`}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadge(event.status).variant}>
+                          {getStatusBadge(event.status).label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => fetchParticipants(event.id)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Participants
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh]">
+                            <DialogHeader>
+                              <DialogTitle>Participants - {participantsData?.event.title}</DialogTitle>
+                              <DialogDescription>Liste des participants inscrits à cet événement</DialogDescription>
+                            </DialogHeader>
 
-        <TabsContent value="participations" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Événements auxquels je participe
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {myParticipations.length === 0 ? (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Vous ne participez à aucun événement</p>
-                  <Button className="mt-4" onClick={() => (window.location.href = "/events")}>
-                    Découvrir les événements
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {myParticipations.map((event) => (
-                    <Card key={event.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold">{event.title}</h3>
-                              <Badge className={typeColors[event.type]}>{event.type}</Badge>
-                              <Badge className={statusColors[event.status]}>{event.status}</Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{event.description}</p>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                {format(new Date(event.start_date), "dd/MM/yyyy HH:mm")}
+                            {participantsLoading ? (
+                              <div className="flex items-center justify-center py-8">
+                                <LoadingSpinner />
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Users className="h-4 w-4" />
-                                {event.participants_count}/{event.capacity}
-                              </div>
-                              {event.venue && (
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="h-4 w-4" />
-                                  {event.venue.name}
+                            ) : participantsData ? (
+                              <div className="space-y-4">
+                                {/* Statistiques */}
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                  <Card>
+                                    <CardContent className="pt-4">
+                                      <div className="text-2xl font-bold">{participantsData.statistics.total}</div>
+                                      <p className="text-xs text-muted-foreground">Total</p>
+                                    </CardContent>
+                                  </Card>
+                                  <Card>
+                                    <CardContent className="pt-4">
+                                      <div className="text-2xl font-bold text-green-600">
+                                        {participantsData.statistics.registered}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">Inscrits</p>
+                                    </CardContent>
+                                  </Card>
+                                  <Card>
+                                    <CardContent className="pt-4">
+                                      <div className="text-2xl font-bold text-blue-600">
+                                        {participantsData.statistics.attended}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">Présents</p>
+                                    </CardContent>
+                                  </Card>
+                                  <Card>
+                                    <CardContent className="pt-4">
+                                      <div className="text-2xl font-bold text-red-600">
+                                        {participantsData.statistics.cancelled}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">Annulés</p>
+                                    </CardContent>
+                                  </Card>
+                                  <Card>
+                                    <CardContent className="pt-4">
+                                      <div className="text-2xl font-bold text-gray-600">
+                                        {participantsData.statistics.noShow}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">Absents</p>
+                                    </CardContent>
+                                  </Card>
                                 </div>
-                              )}
-                              {event.organizer && <div className="text-xs">Organisé par {event.organizer.name}</div>}
-                            </div>
-                            {event.registration_date && (
-                              <div className="text-xs text-muted-foreground mt-1">
-                                Inscrit le {format(new Date(event.registration_date), "dd/MM/yyyy")}
+
+                                {/* Actions */}
+                                <div className="flex justify-between items-center">
+                                  <h3 className="text-lg font-semibold">
+                                    Liste des participants ({participantsData.participants.length})
+                                  </h3>
+                                  <Button onClick={exportParticipants} variant="outline" size="sm">
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Exporter CSV
+                                  </Button>
+                                </div>
+
+                                {/* Liste des participants */}
+                                <ScrollArea className="h-96">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead>Nom</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Entreprise</TableHead>
+                                        <TableHead>Statut</TableHead>
+                                        <TableHead>Inscription</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {participantsData.participants.map((participant) => (
+                                        <TableRow key={participant.id}>
+                                          <TableCell>
+                                            <div>
+                                              <div className="font-medium">
+                                                {participant.firstName} {participant.lastName}
+                                                {participant.hasAccount && (
+                                                  <Badge variant="secondary" className="ml-2 text-xs">
+                                                    Compte
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                              {participant.jobTitle && (
+                                                <div className="text-sm text-muted-foreground">
+                                                  {participant.jobTitle}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell>{participant.email}</TableCell>
+                                          <TableCell>{participant.company || "Non renseigné"}</TableCell>
+                                          <TableCell>
+                                            <Badge variant={getParticipantStatusBadge(participant.status).variant}>
+                                              {getParticipantStatusBadge(participant.status).label}
+                                            </Badge>
+                                          </TableCell>
+                                          <TableCell>{formatDate(participant.registrationDate)}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </ScrollArea>
+                              </div>
+                            ) : (
+                              <div className="text-center py-8">
+                                <p className="text-muted-foreground">Aucune donnée disponible</p>
                               </div>
                             )}
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => (window.location.href = `/events/details/${event.id}`)}
-                          >
-                            Voir détails
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
