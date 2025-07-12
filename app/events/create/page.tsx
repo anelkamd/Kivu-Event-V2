@@ -157,11 +157,11 @@ export default function CreateEventPage() {
   }
 
   const prepareDataForSubmission = (publish = false) => {
-    // Préparer les données selon le format attendu par l'API
-    const dataToSubmit = {
+    // Adapter les champs pour le backend
+    return {
       title: eventData.title.trim(),
       description: eventData.description.trim(),
-      category: eventData.category,
+      type: eventData.category, // <-- correspondance backend
       startDate: eventData.startDate,
       endDate: eventData.endDate,
       capacity: Number(eventData.capacity) || 100,
@@ -170,20 +170,15 @@ export default function CreateEventPage() {
       price: Number(eventData.price) || 0,
       tags: eventData.tags.trim() || null,
       image: eventData.image.trim() || null,
-      location: {
+      venue: {
         name: eventData.location.name.trim() || "Lieu à définir",
         address: eventData.location.address.trim() || "Adresse à définir",
         city: eventData.location.city.trim() || "Ville à définir",
         country: eventData.location.country.trim() || "Pays à définir",
         capacity: Number(eventData.location.capacity) || Number(eventData.capacity) || 100,
       },
-      organizer: {
-        id: null,
-        name: "Organisateur par défaut",
-      },
-      isPublic: eventData.isPublic,
+      // Retire organizer et isPublic si non utilisés côté backend
     }
-    return dataToSubmit
   }
 
   const handleImageDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -246,15 +241,25 @@ export default function CreateEventPage() {
       const dataToSubmit = prepareDataForSubmission(publish)
       dataToSubmit.image = imageUrl
 
-      const response = await fetch("/api/events", {
+      // Utilise la bonne URL pour la création d'événement
+      const response = await fetch("http://localhost:5000/api/events/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          // "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify(dataToSubmit),
       })
 
-      const result = await response.json()
+      // Ajoute ce bloc pour vérifier le type de réponse
+      let result
+      const contentType = response.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        result = await response.json()
+      } else {
+        const text = await response.text()
+        throw new Error(text || "Réponse du serveur non valide")
+      }
 
       if (!response.ok) {
         throw new Error(result.error || "Erreur lors de la création de l'événement")
@@ -757,7 +762,7 @@ export default function CreateEventPage() {
                     >
                       <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
-                      </svg>
+                    </svg>
                       Twitter
                     </Button>
 
