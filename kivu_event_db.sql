@@ -1,6 +1,6 @@
 -- Création de la base de données
-CREATE DATABASE IF NOT EXISTS kivu_events;
-USE kivu_events;
+CREATE DATABASE IF NOT EXISTS kivu_event;
+USE kivu_event;
 
 -- Table des utilisateurs
 CREATE TABLE IF NOT EXISTS users (
@@ -73,30 +73,30 @@ CREATE TABLE IF NOT EXISTS events (
     image VARCHAR(255) DEFAULT NULL,
     tags TEXT DEFAULT NULL,
     price INT DEFAULT 0,
-    organizer_id CHAR(36) NOT NULL,
-    venue_id CHAR(36) NOT NULL,
+    organizer_id CHAR(36) NULL,
+    venue_id CHAR(36) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (organizer_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE CASCADE
+    FOREIGN KEY (organizer_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- Table de jonction entre événements et intervenants
 CREATE TABLE IF NOT EXISTS event_speakers (
-    event_id CHAR(36) NOT NULL,
-    speaker_id CHAR(36) NOT NULL,
+    event_id CHAR(36) NULL,
+    speaker_id CHAR(36) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (event_id, speaker_id),
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-    FOREIGN KEY (speaker_id) REFERENCES speakers(id) ON DELETE CASCADE
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (speaker_id) REFERENCES speakers(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- Table des participants
 CREATE TABLE IF NOT EXISTS participants (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    user_id CHAR(36) NOT NULL,
-    event_id CHAR(36) NOT NULL,
+    user_id CHAR(36) NULL,
+    event_id CHAR(36) NULL,
     registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     status ENUM('registered', 'attended', 'cancelled', 'no-show') DEFAULT 'registered',
     company VARCHAR(100) DEFAULT NULL,
@@ -109,29 +109,28 @@ CREATE TABLE IF NOT EXISTS participants (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY (user_id, event_id),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- Table des notifications
 CREATE TABLE IF NOT EXISTS notifications (
     id VARCHAR(36) PRIMARY KEY,
-    user_id VARCHAR(36) NOT NULL,
+    user_id CHAR(36) NULL,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     type ENUM('info', 'success', 'warning', 'error') DEFAULT 'info',
     is_read TINYINT(1) DEFAULT 0,
     link VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
-
 
 -- Table des paiements
 CREATE TABLE IF NOT EXISTS payments (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    user_id CHAR(36) NOT NULL,
-    event_id CHAR(36) NOT NULL,
+    user_id CHAR(36) NULL,
+    event_id CHAR(36) NULL,
     amount INT NOT NULL,
     currency VARCHAR(3) DEFAULT 'EUR',
     status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
@@ -140,31 +139,31 @@ CREATE TABLE IF NOT EXISTS payments (
     receipt_url VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- Table pour les rapports
 CREATE TABLE IF NOT EXISTS reports (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    user_id CHAR(36) NOT NULL,
+    user_id CHAR(36) NULL,
     title VARCHAR(255) NOT NULL,
     type ENUM('events', 'participants', 'revenue') NOT NULL,
     format ENUM('pdf', 'csv', 'excel') NOT NULL,
     parameters TEXT DEFAULT NULL,
     file_url VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- Création d'un utilisateur administrateur par défaut
 INSERT INTO users (id, first_name, last_name, email, password, role)
 VALUES (
     UUID(),
-    'Admin',
-    'System',
+    'Anelka',
+    'CEO',
     'admin@kivuevent.com',
-    '$2a$10$yCzWZVN9bYUVQYjqAzmmMeYbRSUBMnB9jT9AQiMkNbzLrCUQEc7Iy',
+    '$2a$10$hWAcWkSyNRX7OqUskh9rOeqv1A/fZVVtfM8YLMJkUokphCgM/kf/q',
     'admin'
 );
 
