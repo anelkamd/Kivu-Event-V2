@@ -139,28 +139,40 @@ export default function ProfilePage() {
         },
       })
 
-      const data = await response.json()
+      const text = await response.text()
+      console.log(text)
+      try {
+        const data = JSON.parse(text)
 
-      if (data.success) {
-        setUser(data.data.user)
-        setEvents(data.data.events)
-        setEditData({
-          firstName: data.data.user.firstName,
-          lastName: data.data.user.lastName,
-          email: data.data.user.email,
-          phone: data.data.user.phone || "",
-          company: data.data.user.company || "",
-          jobTitle: data.data.user.jobTitle || "",
-        })
-      } else {
+        if (data.success) {
+          setUser(data.data.user)
+          setEvents(data.data.events)
+          setEditData({
+            firstName: data.data.user.firstName,
+            lastName: data.data.user.lastName,
+            email: data.data.user.email,
+            phone: data.data.user.phone || "",
+            company: data.data.user.company || "",
+            jobTitle: data.data.user.jobTitle || "",
+          })
+        } else {
+          toast({
+            title: "Erreur",
+            description: data.error || "Erreur lors du chargement du profil",
+            variant: "destructive",
+          })
+        }
+      } catch (err) {
+        console.error("Erreur JSON.parse:", err)
+        console.log("Réponse brute:", text)
         toast({
           title: "Erreur",
-          description: data.error || "Erreur lors du chargement du profil",
+          description: "Réponse invalide du serveur. Contactez le support.",
           variant: "destructive",
         })
       }
     } catch (error) {
-      console.error("Erreur:", error)
+      console.error("Erreur fetch:", error)
       toast({
         title: "Erreur",
         description: "Erreur de connexion au serveur",
@@ -170,6 +182,8 @@ export default function ProfilePage() {
       setLoading(false)
     }
   }
+  
+
 
   // Récupérer les participants d'un événement
   const fetchParticipants = async (eventId: string) => {

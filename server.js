@@ -15,7 +15,7 @@ import venueRoutes from "./routes/venue.routes.js"
 import speakerRoutes from "./routes/speaker.routes.js"
 import participantRoutes from "./routes/participant.routes.js"
 import paymentRoutes from "./routes/payment.routes.js"
-
+import userRoutes from "./routes/user.routes.js"
 import { errorHandler } from "./middleware/error.middleware.js"
 
 import { sequelize } from "./config/database.js"
@@ -34,6 +34,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 
+
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"))
 }
@@ -46,6 +47,7 @@ app.use("/api/venues", venueRoutes)
 app.use("/api/speakers", speakerRoutes)
 app.use("/api/participants", participantRoutes)
 app.use("/api/payments", paymentRoutes)
+app.use("/api/users", userRoutes)
 
 app.get("/", (req, res) => {
   res.json({
