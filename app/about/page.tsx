@@ -187,7 +187,7 @@ export default function AboutPage() {
                                             Nous croyons que chaque événement est une opportunité de créer des connexions significatives."
                                         </p>
                                         <div className="flex gap-4">
-                                            <Link href="https://x.com/Anelka_MD">
+                                            <Link href="https://x.com/anelka_codes">
                                                 <Button variant="outline" size="sm">
                                                     Twitter
                                                 </Button>
