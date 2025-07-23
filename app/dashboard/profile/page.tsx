@@ -516,7 +516,7 @@ export default function ProfilePage() {
             <div className="text-center py-8">
               <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">Vous n'avez pas encore créé d'événement</p>
-              <Button className="mt-4" onClick={() => (window.location.href = "/dashboard/events/create")}>
+              <Button className="mt-4" onClick={() => (window.location.href = "/events/create")}>
                 Créer mon premier événement
               </Button>
             </div>

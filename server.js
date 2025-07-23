@@ -16,10 +16,12 @@ import speakerRoutes from "./routes/speaker.routes.js"
 import participantRoutes from "./routes/participant.routes.js"
 import paymentRoutes from "./routes/payment.routes.js"
 import userRoutes from "./routes/user.routes.js"
-import { errorHandler } from "./middleware/error.middleware.js"
+import uploadRoutes from "./routes/uploadRoutes.js" // <-- corrigé ici
 
+import { errorHandler } from "./middleware/error.middleware.js"
 import { sequelize } from "./config/database.js"
 
+// Setup
 dotenv.config()
 
 const app = express()
@@ -27,13 +29,12 @@ const PORT = process.env.PORT || 5003
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Middlewares
 app.use(cors())
 app.use(helmet())
 app.use(compression())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
-
-
 
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"))
@@ -41,6 +42,7 @@ if (process.env.NODE_ENV === "development") {
 
 app.use(express.static(path.join(__dirname, "public")))
 
+// Routes
 app.use("/api/events", eventRoutes)
 app.use("/api/auth", authRoutes)
 app.use("/api/venues", venueRoutes)
@@ -48,6 +50,7 @@ app.use("/api/speakers", speakerRoutes)
 app.use("/api/participants", participantRoutes)
 app.use("/api/payments", paymentRoutes)
 app.use("/api/users", userRoutes)
+app.use("/api", uploadRoutes)
 
 app.get("/", (req, res) => {
   res.json({
@@ -55,9 +58,21 @@ app.get("/", (req, res) => {
     message: "Bienvenue sur l'API de Gestion des Événements Kivu Event",
     version: "1.0.0",
     documentation: "/api-docs",
+    routes: {
+      events: "/api/events",
+      auth: "/api/auth",
+      venues: "/api/venues",
+      speakers: "/api/speakers",
+      participants: "/api/participants",
+      payments: "/api/payments",
+      users: "/api/users",
+    },
+    authors: "Anelka MD",
+    contact: "anelkadevs@gmail.com"
   })
 })
 
+// Gestion des erreurs
 app.use(errorHandler)
 
 const startServer = async () => {
@@ -91,4 +106,3 @@ const startServer = async () => {
 startServer()
 
 export default app
-

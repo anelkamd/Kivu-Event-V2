@@ -1,29 +1,14 @@
 import express from "express"
-import {
-  createEvent,
-  getEvents,
-  getEvent,
-  updateEvent,
-  deleteEvent,
-  registerForEvent,
-  cancelRegistration,
-  submitFeedback,
-} from "../controllers/event.controller.js"
-import { protect, authorize } from "../middleware/auth.middleware.js"
+import eventController from "../controllers/eventController.js"
 
 const router = express.Router()
 
-router.route("/").get(getEvents).post(protect, authorize("admin", "organizer"), createEvent)
-
-router
-  .route("/:id")
-  .get(getEvent)
-  .put(protect, authorize("admin", "organizer"), updateEvent)
-  .delete(protect, authorize("admin", "organizer"), deleteEvent)
-
-router.route("/:id/register").post(protect, registerForEvent).delete(protect, cancelRegistration)
-
-router.route("/:id/feedback").post(protect, submitFeedback)
+// Routes CRUD pour les événements
+router.post("/create", (req, res) => eventController.createEvent(req, res))
+router.get("/", (req, res) => eventController.getAllEvents(req, res))
+router.get("/:id", (req, res) => eventController.getEventById(req, res))
+router.put("/:id", (req, res) => eventController.updateEvent(req, res))
+router.delete("/:id", (req, res) => eventController.deleteEvent(req, res))
+router.patch("/:id/status", (req, res) => eventController.toggleEventStatus(req, res))
 
 export default router
-

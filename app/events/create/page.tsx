@@ -227,7 +227,7 @@ export default function CreateEventPage() {
         const formData = new FormData()
         formData.append("image", imageFile)
 
-        const uploadResponse = await fetch("/api/upload", {
+        const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload`, {
           method: "POST",
           body: formData,
         })
