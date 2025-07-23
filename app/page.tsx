@@ -8,11 +8,8 @@ import { Navbar } from "@/components/layout/NavBar"
 import { Footer } from "@/components/layout/Footer"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Calendar, Check, Users, ChevronRight, ExternalLink } from "lucide-react"
-import cover from "@/public/images/illustration1.jpg"
-import  sponso1 from "@/public/sponso1.png"
-import  sponso2 from "@/public/sponso2.png"
-import  sponso3 from "@/public/sponso3.png"
-import  sponso4 from "@/public/sponso4.png"
+import cover from "@/public/images/illustration1.png"
+
 
 export default function LandingPage() {
 
@@ -189,16 +186,23 @@ export default function LandingPage() {
             </div>
 
             <motion.div
-                className="flex flex-wrap items-center justify-center gap-8 mt-20 opacity-70"
-                initial={{ opacity: 0, y: 20 }}
-                animate={heroInView ? { opacity: 0.7, y: 0 } : {}}
-                transition={{ delay: 1.2, duration: 0.5 }}
+              className="flex flex-wrap items-center justify-center gap-8 mt-20 opacity-70"
+              initial={{ opacity: 0, y: 20 }}
+              animate={heroInView ? { opacity: 0.7, y: 0 } : {}}
+              transition={{ delay: 1.2, duration: 0.5 }}
             >
-              <div className="text-sm font-medium">Ils nous font confiance</div>
-              {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-8 w-24 bg-gray-400 dark:bg-gray-600 rounded opacity-50"></div>
+              <div className="text-sm font-medium w-full text-center">Ils nous font confiance</div>
+
+              {[1, 2, 3, 4].map((i) => (
+                <img
+                  key={i}
+                  src={`/partners/partner${i}.png`}
+                  alt={`Partenaire ${i}`}
+                  className="h-24 w-32 object-contain  transition-opacity"
+                />
               ))}
             </motion.div>
+
           </div>
         </motion.section>
 
