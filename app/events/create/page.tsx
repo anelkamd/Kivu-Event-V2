@@ -157,11 +157,10 @@ export default function CreateEventPage() {
   }
 
   const prepareDataForSubmission = (publish = false) => {
-    // Adapter les champs pour le backend
     return {
       title: eventData.title.trim(),
       description: eventData.description.trim(),
-      type: eventData.category, // <-- correspondance backend
+      type: eventData.category,
       startDate: eventData.startDate,
       endDate: eventData.endDate,
       capacity: Number(eventData.capacity) || 100,
@@ -172,14 +171,14 @@ export default function CreateEventPage() {
       image: eventData.image.trim() || null,
       venue: {
         name: eventData.location.name.trim() || "Lieu à définir",
-        address: eventData.location.address.trim() || "Adresse à définir",
+        address: eventData.location.address.trim() || "Adresse à définir", // ✅ corrigé ici
         city: eventData.location.city.trim() || "Ville à définir",
         country: eventData.location.country.trim() || "Pays à définir",
         capacity: Number(eventData.location.capacity) || Number(eventData.capacity) || 100,
       },
-      // Retire organizer et isPublic si non utilisés côté backend
     }
   }
+
 
   const handleImageDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -213,16 +212,11 @@ export default function CreateEventPage() {
   }
 
   const handleSubmit = async (publish = false) => {
-    if (!validateForm()) {
-      return
-    }
-
     try {
       setIsSubmitting(true)
 
       let imageUrl = ""
 
-      // Upload de l'image si elle existe
       if (imageFile) {
         const formData = new FormData()
         formData.append("image", imageFile)
@@ -235,25 +229,26 @@ export default function CreateEventPage() {
         if (uploadResponse.ok) {
           const uploadResult = await uploadResponse.json()
           imageUrl = uploadResult.url
+        } else {
+          throw new Error("Échec de l’upload d’image.")
         }
       }
 
       const dataToSubmit = prepareDataForSubmission(publish)
       dataToSubmit.image = imageUrl
 
-      // Utilise la bonne URL pour la création d'événement
-      const response = await fetch("http://localhost:5000/api/events/create", {
+      console.log("🔼 Données envoyées :", dataToSubmit)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify(dataToSubmit),
       })
 
-      // Ajoute ce bloc pour vérifier le type de réponse
-      let result
       const contentType = response.headers.get("content-type")
+      let result
       if (contentType && contentType.includes("application/json")) {
         result = await response.json()
       } else {
@@ -261,27 +256,34 @@ export default function CreateEventPage() {
         throw new Error(text || "Réponse du serveur non valide")
       }
 
+      console.log("🟢 Réponse API :", result)
+
       if (!response.ok) {
         throw new Error(result.error || "Erreur lors de la création de l'événement")
       }
 
-      if (result.success) {
+      if (result.success || result.data) {
         setCreatedEvent(result.data)
         setShowSuccessDialog(true)
+        toast({
+          title: "Succès",
+          description: "Événement créé avec succès.",
+        })
       } else {
         throw new Error(result.error || "Erreur inconnue")
       }
     } catch (error: any) {
-      console.error("Erreur lors de la création de l'événement:", error)
+      console.error("❌ Erreur création événement:", error)
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur s'est produite lors de la création de l'événement.",
+        description: error.message || "Une erreur est survenue.",
         variant: "destructive",
       })
     } finally {
       setIsSubmitting(false)
     }
   }
+
 
   const goToNextTab = () => {
     if (activeTab === "basic") setActiveTab("details")
@@ -297,7 +299,7 @@ export default function CreateEventPage() {
 
   const getEventLink = () => {
     if (!createdEvent) return ""
-    return `${window.location.origin}/events/${createdEvent.id}`
+    return `${window.location.origin}/events/${createdEvent.id}/register`
   }
 
   return (
@@ -629,13 +631,24 @@ export default function CreateEventPage() {
               Enregistrer comme brouillon
             </Button>
             <Button
-              onClick={() => handleSubmit(true)}
+              onClick={() => {
+                if (!validateForm()) {
+                  toast({
+                    title: "Formulaire incomplet",
+                    description: "Veuillez remplir les champs obligatoires marqués d’un *.",
+                    variant: "destructive",
+                  })
+                  return
+                }
+                handleSubmit(true)
+              }}
               disabled={isSubmitting}
               className="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 flex items-center"
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Créer l'événement
             </Button>
+
           </div>
         </CardFooter>
       </Card>

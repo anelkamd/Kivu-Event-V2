@@ -16,14 +16,13 @@ class EventController {
 
       const newEvent = await eventService.createEvent(eventData)
 
+      // 🔁 On récupère l’événement avec la relation venue
+      const eventWithVenue = await eventService.getEventById(newEvent.id)
+
       return res.status(201).json({
         success: true,
         message: "Événement créé avec succès",
-        data: {
-          id: newEvent.id,
-          title: newEvent.title,
-          status: newEvent.status,
-        },
+        data: eventWithVenue,
       })
     } catch (error) {
       console.error("Erreur lors de la création de l'événement:", error)
@@ -36,11 +35,11 @@ class EventController {
 
   async getAllEvents(req, res) {
     try {
-      const { page = 1, limit = 10, status, category, search } = req.query
+      const { page = 1, limit = 10, status, type, search } = req.query
 
       const filters = {
         status,
-        category,
+        type,
         search,
         page: Number.parseInt(page),
         limit: Number.parseInt(limit),
@@ -201,6 +200,5 @@ class EventController {
   }
 }
 
-// ✅ Ceci exporte une instance directement
 const eventController = new EventController()
 export default eventController
