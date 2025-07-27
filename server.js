@@ -17,6 +17,7 @@ import participantRoutes from "./routes/participant.routes.js"
 import paymentRoutes from "./routes/payment.routes.js"
 import userRoutes from "./routes/user.routes.js"
 import uploadRoutes from "./routes/uploadRoutes.js" // <-- corrigé ici
+const contactRoutes = require("./routes/contact")
 
 import { errorHandler } from "./middleware/error.middleware.js"
 import { sequelize } from "./config/database.js"
@@ -51,6 +52,7 @@ app.use("/api/participants", participantRoutes)
 app.use("/api/payments", paymentRoutes)
 app.use("/api/users", userRoutes)
 app.use("/api", uploadRoutes)
+app.use("/api/contact", contactRoutes)
 
 app.get("/", (req, res) => {
   res.json({
