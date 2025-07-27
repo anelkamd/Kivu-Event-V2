@@ -16,26 +16,49 @@ import speakerRoutes from "./routes/speaker.routes.js"
 import participantRoutes from "./routes/participant.routes.js"
 import paymentRoutes from "./routes/payment.routes.js"
 import userRoutes from "./routes/user.routes.js"
-import uploadRoutes from "./routes/uploadRoutes.js" // <-- corrigé ici
-const contactRoutes = require("./routes/contact")
+import uploadRoutes from "./routes/uploadRoutes.js"
+import contactRoutes from "./routes/contact.routes.js"
 
 import { errorHandler } from "./middleware/error.middleware.js"
 import { sequelize } from "./config/database.js"
 
 // Setup
 dotenv.config()
-
 const app = express()
 const PORT = process.env.PORT || 5003
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Middleware de sécurité
+app.use(
+  helmet({
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+  }),
+)
+
+// Configuration CORS
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+)
+
 // Middlewares
-app.use(cors())
-app.use(helmet())
 app.use(compression())
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(express.json({ limit: "10mb" }))
+app.use(express.urlencoded({ extended: true, limit: "10mb" }))
 
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"))
@@ -54,6 +77,17 @@ app.use("/api/users", userRoutes)
 app.use("/api", uploadRoutes)
 app.use("/api/contact", contactRoutes)
 
+// Route de santé
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || "development",
+  })
+})
+
+// Route par défaut
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -68,9 +102,20 @@ app.get("/", (req, res) => {
       participants: "/api/participants",
       payments: "/api/payments",
       users: "/api/users",
+      contact: "/api/contact",
     },
     authors: "Anelka MD",
-    contact: "anelkadevs@gmail.com"
+    contact: "anelkadevs@gmail.com",
+  })
+})
+
+// Middleware de gestion des erreurs 404
+app.use("*", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route non trouvée",
+    path: req.originalUrl,
+    method: req.method,
   })
 })
 
@@ -98,12 +143,25 @@ const startServer = async () => {
       `),
       )
       console.log(colors.green.bold(`✓ Serveur démarré sur le port ${PORT} en mode ${process.env.NODE_ENV}`))
+      console.log(colors.blue(`📧 Service email: ${process.env.SMTP_HOST || "Non configuré"}`))
+      console.log(colors.magenta(`🌐 Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:3000"}`))
     })
   } catch (error) {
     console.error(colors.red.bold("✗ Erreur lors de la connexion à la base de données:"), error.message)
     process.exit(1)
   }
 }
+
+// Gestion propre de l'arrêt du serveur
+process.on("SIGTERM", () => {
+  console.log(colors.yellow("SIGTERM reçu, arrêt du serveur..."))
+  process.exit(0)
+})
+
+process.on("SIGINT", () => {
+  console.log(colors.yellow("SIGINT reçu, arrêt du serveur..."))
+  process.exit(0)
+})
 
 startServer()
 

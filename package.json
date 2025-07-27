@@ -66,6 +66,8 @@
     "dotenv": "latest",
     "embla-carousel-react": "8.5.1",
     "express": "latest",
+    "express-rate-limit": "^8.0.1",
+    "express-validator": "^7.2.1",
     "framer-motion": "latest",
     "google-auth-library": "^9.15.1",
     "helmet": "latest",
