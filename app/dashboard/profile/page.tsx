@@ -8,12 +8,30 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import {
   Mail,
   Phone,
@@ -31,6 +49,8 @@ import {
   Settings,
   AlertTriangle,
   Loader2,
+  Eye,
+  Download,
 } from "lucide-react"
 
 interface UserProfile {
@@ -103,6 +123,35 @@ interface TableData {
   }
 }
 
+interface Participant {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  company?: string
+  jobTitle?: string
+  status: string
+  registrationDate: string
+  hasAccount: boolean
+}
+
+interface ParticipantsData {
+  event: {
+    title: string
+    capacity?: number
+    startDate: string
+  }
+  participants: Participant[]
+  statistics: {
+    total: number
+    registered: number
+    attended: number
+    cancelled: number
+    noShow: number
+  }
+}
+
 export default function ProfilePage() {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [events, setEvents] = useState<Event[]>([])
@@ -125,6 +174,25 @@ export default function ProfilePage() {
   const [showAddRecord, setShowAddRecord] = useState(false)
   const [newRecord, setNewRecord] = useState<Record<string, any>>({})
   const [editingRecord, setEditingRecord] = useState<any>(null)
+
+  // États pour la gestion des événements
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null)
+  const [showEditEvent, setShowEditEvent] = useState(false)
+  const [eventEditData, setEventEditData] = useState({
+    title: "",
+    description: "",
+    type: "",
+    startDate: "",
+    endDate: "",
+    capacity: "",
+    status: "",
+    price: "",
+  })
+
+  // États pour les participants
+  const [participantsData, setParticipantsData] = useState<ParticipantsData | null>(null)
+  const [participantsLoading, setParticipantsLoading] = useState(false)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
 
   const { toast } = useToast()
 
@@ -351,8 +419,6 @@ export default function ProfilePage() {
 
   // Supprimer un enregistrement
   const deleteRecord = async (id: any) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cet enregistrement ?")) return
-
     try {
       setDatabaseLoading(true)
       const token = localStorage.getItem("token")
@@ -398,6 +464,163 @@ export default function ProfilePage() {
     }
   }
 
+  // Supprimer un événement
+  const deleteEvent = async (eventId: string) => {
+    try {
+      const token = localStorage.getItem("token")
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/database`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "delete_record",
+          tableName: "events",
+          data: { id: eventId },
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Succès",
+          description: "Événement supprimé avec succès",
+        })
+        // Mettre à jour la liste des événements
+        setEvents(events.filter((event) => event.id !== eventId))
+        // Recharger les données du profil pour mettre à jour les statistiques
+        fetchProfileData()
+      } else {
+        toast({
+          title: "Erreur",
+          description: data.error || "Erreur lors de la suppression de l'événement",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Erreur:", error)
+      toast({
+        title: "Erreur",
+        description: "Erreur de connexion au serveur",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Modifier un événement
+  const updateEvent = async () => {
+    try {
+      if (!editingEvent) return
+
+      const token = localStorage.getItem("token")
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/database`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "update_record",
+          tableName: "events",
+          data: {
+            id: editingEvent.id,
+            title: eventEditData.title,
+            description: eventEditData.description,
+            type: eventEditData.type,
+            start_date: eventEditData.startDate,
+            end_date: eventEditData.endDate,
+            capacity: Number.parseInt(eventEditData.capacity) || null,
+            status: eventEditData.status,
+            price: Number.parseInt(eventEditData.price) || 0,
+          },
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Succès",
+          description: "Événement modifié avec succès",
+        })
+        setShowEditEvent(false)
+        setEditingEvent(null)
+        // Recharger les données du profil
+        fetchProfileData()
+      } else {
+        toast({
+          title: "Erreur",
+          description: data.error || "Erreur lors de la modification de l'événement",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Erreur:", error)
+      toast({
+        title: "Erreur",
+        description: "Erreur de connexion au serveur",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Ouvrir le modal de modification d'événement
+  const openEditEvent = (event: Event) => {
+    setEditingEvent(event)
+    setEventEditData({
+      title: event.title,
+      description: event.description,
+      type: event.type,
+      startDate: new Date(event.startDate).toISOString().slice(0, 16),
+      endDate: new Date(event.endDate).toISOString().slice(0, 16),
+      capacity: event.capacity?.toString() || "",
+      status: event.status,
+      price: event.price?.toString() || "0",
+    })
+    setShowEditEvent(true)
+  }
+
+  // Récupérer les participants d'un événement
+  const fetchParticipants = async (eventId: string) => {
+    try {
+      setParticipantsLoading(true)
+      const token = localStorage.getItem("token")
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${eventId}/participants`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setParticipantsData(data.data)
+        setSelectedEventId(eventId)
+      } else {
+        toast({
+          title: "Erreur",
+          description: data.error || "Erreur lors du chargement des participants",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Erreur:", error)
+      toast({
+        title: "Erreur",
+        description: "Erreur de connexion au serveur",
+        variant: "destructive",
+      })
+    } finally {
+      setParticipantsLoading(false)
+    }
+  }
+
   // Mettre à jour le profil
   const updateProfile = async () => {
     try {
@@ -438,6 +661,40 @@ export default function ProfilePage() {
     }
   }
 
+  // Exporter les participants en CSV
+  const exportParticipants = () => {
+    if (!participantsData) return
+
+    const csvContent = [
+      ["Prénom", "Nom", "Email", "Téléphone", "Entreprise", "Poste", "Statut", "Date d'inscription"],
+      ...participantsData.participants.map((p) => [
+        p.firstName,
+        p.lastName,
+        p.email,
+        p.phone || "",
+        p.company || "",
+        p.jobTitle || "",
+        p.status,
+        new Date(p.registrationDate).toLocaleDateString("fr-FR"),
+      ]),
+    ]
+      .map((row) => row.join(","))
+      .join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute(
+      "download",
+      `participants-${participantsData.event.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.csv`,
+    )
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   // Formater la date
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("fr-FR", {
@@ -456,6 +713,17 @@ export default function ProfilePage() {
       draft: { label: "Brouillon", variant: "secondary" as const },
       completed: { label: "Terminé", variant: "outline" as const },
       cancelled: { label: "Annulé", variant: "destructive" as const },
+    }
+
+    return statusConfig[status as keyof typeof statusConfig] || { label: status, variant: "secondary" as const }
+  }
+
+  const getParticipantStatusBadge = (status: string) => {
+    const statusConfig = {
+      registered: { label: "Inscrit", variant: "default" as const },
+      attended: { label: "Présent", variant: "default" as const },
+      cancelled: { label: "Annulé", variant: "destructive" as const },
+      "no-show": { label: "Absent", variant: "secondary" as const },
     }
 
     return statusConfig[status as keyof typeof statusConfig] || { label: status, variant: "secondary" as const }
@@ -718,6 +986,7 @@ export default function ProfilePage() {
                         <TableHead>Lieu</TableHead>
                         <TableHead>Participants</TableHead>
                         <TableHead>Statut</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -761,6 +1030,178 @@ export default function ProfilePage() {
                             <Badge variant={getStatusBadge(event.status).variant}>
                               {getStatusBadge(event.status).label}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="sm" onClick={() => fetchParticipants(event.id)}>
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Participants
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-4xl max-h-[80vh]">
+                                  <DialogHeader>
+                                    <DialogTitle>Participants - {participantsData?.event.title}</DialogTitle>
+                                    <DialogDescription>
+                                      Liste des participants inscrits à cet événement
+                                    </DialogDescription>
+                                  </DialogHeader>
+
+                                  {participantsLoading ? (
+                                    <div className="flex items-center justify-center py-8">
+                                      <Loader2 className="h-8 w-8 animate-spin" />
+                                    </div>
+                                  ) : participantsData ? (
+                                    <div className="space-y-4">
+                                      {/* Statistiques */}
+                                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                        <Card>
+                                          <CardContent className="pt-4">
+                                            <div className="text-2xl font-bold">
+                                              {participantsData.statistics.total}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Total</p>
+                                          </CardContent>
+                                        </Card>
+                                        <Card>
+                                          <CardContent className="pt-4">
+                                            <div className="text-2xl font-bold text-green-600">
+                                              {participantsData.statistics.registered}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Inscrits</p>
+                                          </CardContent>
+                                        </Card>
+                                        <Card>
+                                          <CardContent className="pt-4">
+                                            <div className="text-2xl font-bold text-blue-600">
+                                              {participantsData.statistics.attended}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Présents</p>
+                                          </CardContent>
+                                        </Card>
+                                        <Card>
+                                          <CardContent className="pt-4">
+                                            <div className="text-2xl font-bold text-red-600">
+                                              {participantsData.statistics.cancelled}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Annulés</p>
+                                          </CardContent>
+                                        </Card>
+                                        <Card>
+                                          <CardContent className="pt-4">
+                                            <div className="text-2xl font-bold text-gray-600">
+                                              {participantsData.statistics.noShow}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Absents</p>
+                                          </CardContent>
+                                        </Card>
+                                      </div>
+
+                                      {/* Actions */}
+                                      <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-semibold">
+                                          Liste des participants ({participantsData.participants.length})
+                                        </h3>
+                                        <Button onClick={exportParticipants} variant="outline" size="sm">
+                                          <Download className="h-4 w-4 mr-2" />
+                                          Exporter CSV
+                                        </Button>
+                                      </div>
+
+                                      {/* Liste des participants */}
+                                      <ScrollArea className="h-96">
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead>Nom</TableHead>
+                                              <TableHead>Email</TableHead>
+                                              <TableHead>Entreprise</TableHead>
+                                              <TableHead>Statut</TableHead>
+                                              <TableHead>Inscription</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {participantsData.participants.map((participant) => (
+                                              <TableRow key={participant.id}>
+                                                <TableCell>
+                                                  <div>
+                                                    <div className="font-medium">
+                                                      {participant.firstName} {participant.lastName}
+                                                      {participant.hasAccount && (
+                                                        <Badge variant="secondary" className="ml-2 text-xs">
+                                                          Compte
+                                                        </Badge>
+                                                      )}
+                                                    </div>
+                                                    {participant.jobTitle && (
+                                                      <div className="text-sm text-muted-foreground">
+                                                        {participant.jobTitle}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </TableCell>
+                                                <TableCell>{participant.email}</TableCell>
+                                                <TableCell>{participant.company || "Non renseigné"}</TableCell>
+                                                <TableCell>
+                                                  <Badge
+                                                    variant={getParticipantStatusBadge(participant.status).variant}
+                                                  >
+                                                    {getParticipantStatusBadge(participant.status).label}
+                                                  </Badge>
+                                                </TableCell>
+                                                <TableCell>{formatDate(participant.registrationDate)}</TableCell>
+                                              </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </ScrollArea>
+                                    </div>
+                                  ) : (
+                                    <div className="text-center py-8">
+                                      <p className="text-muted-foreground">Aucune donnée disponible</p>
+                                    </div>
+                                  )}
+                                </DialogContent>
+                              </Dialog>
+
+                              {/* Boutons d'administration (visibles seulement pour les admins) */}
+                              {user.role === "admin" && (
+                                <>
+                                  <Button variant="outline" size="sm" onClick={() => openEditEvent(event)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Modifier
+                                  </Button>
+
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="destructive" size="sm">
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Supprimer
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Êtes-vous sûr de vouloir supprimer l'événement "{event.title}" ? Cette action
+                                          est irréversible et supprimera également tous les participants associés.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => deleteEvent(event.id)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Supprimer
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -888,9 +1329,31 @@ export default function ProfilePage() {
                                         <Button variant="outline" size="sm" onClick={() => setEditingRecord(record)}>
                                           <Edit className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="destructive" size="sm" onClick={() => deleteRecord(record.id)}>
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <Button variant="destructive" size="sm">
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                Êtes-vous sûr de vouloir supprimer cet enregistrement ? Cette action est
+                                                irréversible.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                              <AlertDialogAction
+                                                onClick={() => deleteRecord(record.id)}
+                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                              >
+                                                Supprimer
+                                              </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
                                       </div>
                                     </TableCell>
                                   </TableRow>
@@ -1060,6 +1523,127 @@ export default function ProfilePage() {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Dialog pour modifier un événement */}
+      <Dialog open={showEditEvent} onOpenChange={setShowEditEvent}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Modifier l'événement</DialogTitle>
+            <DialogDescription>Modifiez les informations de l'événement</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-96">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+              <div className="space-y-2">
+                <Label htmlFor="event-title">Titre *</Label>
+                <Input
+                  id="event-title"
+                  value={eventEditData.title}
+                  onChange={(e) => setEventEditData((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Titre de l'événement"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-type">Type *</Label>
+                <Select
+                  value={eventEditData.type}
+                  onValueChange={(value) => setEventEditData((prev) => ({ ...prev, type: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionnez le type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="conference">Conférence</SelectItem>
+                    <SelectItem value="seminar">Séminaire</SelectItem>
+                    <SelectItem value="workshop">Atelier</SelectItem>
+                    <SelectItem value="meeting">Réunion</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-start-date">Date de début *</Label>
+                <Input
+                  id="event-start-date"
+                  type="datetime-local"
+                  value={eventEditData.startDate}
+                  onChange={(e) => setEventEditData((prev) => ({ ...prev, startDate: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-end-date">Date de fin *</Label>
+                <Input
+                  id="event-end-date"
+                  type="datetime-local"
+                  value={eventEditData.endDate}
+                  onChange={(e) => setEventEditData((prev) => ({ ...prev, endDate: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-capacity">Capacité</Label>
+                <Input
+                  id="event-capacity"
+                  type="number"
+                  value={eventEditData.capacity}
+                  onChange={(e) => setEventEditData((prev) => ({ ...prev, capacity: e.target.value }))}
+                  placeholder="Nombre maximum de participants"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-price">Prix (€)</Label>
+                <Input
+                  id="event-price"
+                  type="number"
+                  value={eventEditData.price}
+                  onChange={(e) => setEventEditData((prev) => ({ ...prev, price: e.target.value }))}
+                  placeholder="Prix en euros"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-status">Statut</Label>
+                <Select
+                  value={eventEditData.status}
+                  onValueChange={(value) => setEventEditData((prev) => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionnez le statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Brouillon</SelectItem>
+                    <SelectItem value="published">Publié</SelectItem>
+                    <SelectItem value="cancelled">Annulé</SelectItem>
+                    <SelectItem value="completed">Terminé</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="md:col-span-2 space-y-2">
+                <Label htmlFor="event-description">Description *</Label>
+                <Textarea
+                  id="event-description"
+                  value={eventEditData.description}
+                  onChange={(e) => setEventEditData((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Description de l'événement"
+                  rows={3}
+                />
+              </div>
+            </div>
+          </ScrollArea>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowEditEvent(false)}>
+              Annuler
+            </Button>
+            <Button onClick={updateEvent}>
+              <Save className="h-4 w-4 mr-2" />
+              Sauvegarder
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
