@@ -1505,7 +1505,7 @@ export default function ProfilePage() {
                   </Button>
                   <Button
                     onClick={() => {
-                      // Logique de mise à jour ici
+                      
                       setEditingRecord(null)
                     }}
                     disabled={databaseLoading}
