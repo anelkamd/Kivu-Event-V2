@@ -6,7 +6,7 @@
   "main": "server.js",
   "proxy": "http://localhost:5000",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
