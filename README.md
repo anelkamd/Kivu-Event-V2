@@ -5,7 +5,7 @@
 <h1 align="center">Kivu Event V0.1</h1>
 
 <p align="center">
-  <img src="./public/cover.png" width="100" alt="Kivu Event Dashboard" />
+  <img src="./public/cover.png" alt="Kivu Event Dashboard" />
 </p>
 
 <p align="center">
