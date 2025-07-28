@@ -18,6 +18,7 @@ import paymentRoutes from "./routes/payment.routes.js"
 import userRoutes from "./routes/user.routes.js"
 import uploadRoutes from "./routes/uploadRoutes.js"
 import contactRoutes from "./routes/contact.routes.js"
+import adminRoutes from "./routes/admin.js"
 
 import { errorHandler } from "./middleware/error.middleware.js"
 import { sequelize } from "./config/database.js"
@@ -76,6 +77,7 @@ app.use("/api/payments", paymentRoutes)
 app.use("/api/users", userRoutes)
 app.use("/api", uploadRoutes)
 app.use("/api/contact", contactRoutes)
+app.use("/api/admin", adminRoutes)
 
 // Route de santé
 app.get("/health", (req, res) => {
