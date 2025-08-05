@@ -9,8 +9,14 @@ class EventService {
    */
   async createEvent(eventData) {
     // 1) Préparation des tags
-    if (eventData.tags && typeof eventData.tags === "string") {
-      eventData.tags = eventData.tags.split(",").map((t) => t.trim())
+    let processedTags = null
+    if (eventData.tags) {
+      // Convertit la chaîne de tags en tableau, puis la reconvertit en chaîne pour la BDD
+      processedTags = eventData.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .join(",")
     }
 
     // 2) Gestion du lieu (venue)
@@ -19,7 +25,7 @@ class EventService {
     if (eventData.venue) {
       const venuePayload = {
         name: eventData.venue.name?.trim(),
-        street: eventData.venue.street?.trim(),
+        street: eventData.venue.street?.trim(), // Le frontend envoie 'street'
         city: eventData.venue.city?.trim(),
         state: eventData.venue.state?.trim(),
         country: eventData.venue.country?.trim(),
@@ -37,9 +43,14 @@ class EventService {
         where: {
           name: venuePayload.name,
           city: venuePayload.city,
-          street: venuePayload.street,
+          // Correction: Utiliser 'address' si c'est le nom de la colonne dans votre BDD
+          // Si votre BDD a une colonne 'street', alors le problème est dans la définition du modèle Venue
+          address: venuePayload.street, // <-- Utilise 'address' pour la clause WHERE
         },
-        defaults: venuePayload,
+        defaults: {
+          ...venuePayload,
+          address: venuePayload.street, // <-- Assurez-vous que 'address' est bien mappé pour la création
+        },
       })
 
       venueId = venueRecord.id
@@ -56,7 +67,7 @@ class EventService {
       registration_deadline: eventData.registrationDeadline || null,
       status: eventData.status || "draft",
       price: Number(eventData.price) || 0,
-      tags: eventData.tags,
+      tags: processedTags, // Utilise la chaîne de tags traitée
       image: eventData.image,
       venue_id: venueId,
     }
@@ -74,10 +85,7 @@ class EventService {
     if (status) where.status = status
     if (type) where.type = type
     if (search) {
-      where[Op.or] = [
-        { title: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } },
-      ]
+      where[Op.or] = [{ title: { [Op.iLike]: `%${search}%` } }, { description: { [Op.iLike]: `%${search}%` } }]
     }
 
     const offset = (page - 1) * limit
@@ -131,9 +139,12 @@ class EventService {
         where: {
           name: venuePayload.name,
           city: venuePayload.city,
-          street: venuePayload.street,
+          address: venuePayload.street, // <-- Correction ici aussi pour la mise à jour
         },
-        defaults: venuePayload,
+        defaults: {
+          ...venuePayload,
+          address: venuePayload.street, // <-- Assurez-vous que 'address' est bien mappé pour la création
+        },
       })
 
       updateData.venue_id = venueRecord.id
@@ -160,8 +171,13 @@ class EventService {
     if (updateData.description) updateData.description = updateData.description.trim()
     if (updateData.status) updateData.status = updateData.status.trim()
 
-    if (updateData.tags && typeof updateData.tags === "string") {
-      updateData.tags = updateData.tags.split(",").map((t) => t.trim())
+    if (updateData.tags) {
+      // Convertit la chaîne de tags en tableau, puis la reconvertit en chaîne pour la BDD
+      updateData.tags = updateData.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .join(",")
     }
 
     if (updateData.capacity) updateData.capacity = Number(updateData.capacity)
