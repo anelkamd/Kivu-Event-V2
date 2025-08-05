@@ -1,92 +1,110 @@
 import { DataTypes } from "sequelize"
-import { v4 as uuidv4 } from "uuid"
 import { sequelize } from "../config/database.js"
+// Importez les modèles pour les références, mais les associations seront définies dans index.js
+import User from "./User.js"
+import Event from "./Event.js"
 
 const Participant = sequelize.define(
-    "Participant",
-    {
-        id: {
-            type: DataTypes.STRING,
-            primaryKey: true,
-            defaultValue: () => uuidv4(),
-        },
-        userId: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            field: "user_id",
-            references: {
-                model: "users",
-                key: "id",
-            },
-        },
-        eventId: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            field: "event_id",
-            references: {
-                model: "events",
-                key: "id",
-            },
-        },
-        registrationDate: {
-            type: DataTypes.DATE,
-            defaultValue: DataTypes.NOW,
-            field: "registration_date",
-        },
-        status: {
-            type: DataTypes.ENUM("registered", "attended", "cancelled", "no-show"),
-            defaultValue: "registered",
-        },
-        company: {
-            type: DataTypes.STRING(100),
-        },
-        jobTitle: {
-            type: DataTypes.STRING(100),
-            field: "job_title",
-        },
-        dietaryRestrictions: {
-            type: DataTypes.STRING(255),
-            field: "dietary_restrictions",
-        },
-        specialRequirements: {
-            type: DataTypes.TEXT,
-            field: "special_requirements",
-        },
-        feedbackRating: {
-            type: DataTypes.INTEGER,
-            field: "feedback_rating",
-        },
-        feedbackComment: {
-            type: DataTypes.TEXT,
-            field: "feedback_comment",
-        },
-        feedbackSubmittedAt: {
-            type: DataTypes.DATE,
-            field: "feedback_submitted_at",
-        },
-        createdAt: {
-            type: DataTypes.DATE,
-            defaultValue: DataTypes.NOW,
-            field: "created_at",
-        },
-        updatedAt: {
-            type: DataTypes.DATE,
-            defaultValue: DataTypes.NOW,
-            field: "updated_at",
-        },
+  "Participant",
+  {
+    id: {
+      type: DataTypes.UUID, // Changé de STRING à UUID
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4, // Changé de uuidv4() à DataTypes.UUIDV4
     },
-    {
-        tableName: "participants",
-        timestamps: true,
-        underscored: true,
-        indexes: [
-            {
-                unique: true,
-                fields: ["user_id", "event_id"],
-            },
-        ],
+    userId: {
+      type: DataTypes.UUID, // Changé de STRING à UUID
+      allowNull: false,
+      field: "user_id",
+      references: {
+        model: User, // Référence directe au modèle User
+        key: "id",
+      },
     },
+    eventId: {
+      type: DataTypes.UUID, // Changé de STRING à UUID
+      allowNull: false,
+      field: "event_id",
+      references: {
+        model: Event, // Référence directe au modèle Event
+        key: "id",
+      },
+    },
+    registrationDate: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      allowNull: false, // Ajouté explicitement
+      field: "registration_date",
+    },
+    status: {
+      type: DataTypes.ENUM("registered", "attended", "cancelled", "no-show"),
+      defaultValue: "registered",
+      allowNull: false, // Ajouté explicitement
+    },
+    company: {
+      type: DataTypes.STRING(100), // Ajouté une longueur
+      allowNull: true, // Ajouté explicitement
+    },
+    jobTitle: {
+      type: DataTypes.STRING(100), // Ajouté une longueur
+      allowNull: true, // Ajouté explicitement
+      field: "job_title",
+    },
+    dietaryRestrictions: {
+      type: DataTypes.STRING(255), // Ajouté une longueur
+      allowNull: true, // Ajouté explicitement
+      field: "dietary_restrictions",
+    },
+    specialRequirements: {
+      type: DataTypes.TEXT,
+      allowNull: true, // Ajouté explicitement
+      field: "special_requirements",
+    },
+    feedbackRating: {
+      type: DataTypes.INTEGER,
+      allowNull: true, // Ajouté explicitement
+      field: "feedback_rating",
+      validate: {
+        min: { args: [1], msg: "La note minimale est 1" },
+        max: { args: [5], msg: "La note maximale est 5" },
+      },
+    },
+    feedbackComment: {
+      type: DataTypes.TEXT,
+      allowNull: true, // Ajouté explicitement
+      field: "feedback_comment",
+    },
+    feedbackSubmittedAt: {
+      type: DataTypes.DATE,
+      allowNull: true, // Ajouté explicitement
+      field: "feedback_submitted_at",
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      allowNull: false, // Ajouté explicitement
+      field: "created_at",
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      allowNull: false, // Ajouté explicitement
+      field: "updated_at",
+    },
+  },
+  {
+    tableName: "participants",
+    timestamps: true,
+    underscored: true,
+    indexes: [
+      {
+        unique: true,
+        fields: ["user_id", "event_id"], // Utilise les noms de colonnes de la DB
+      },
+    ],
+  },
 )
 
-export default Participant
+// IMPORTANT: Les associations sont maintenant définies dans models/index.js
 
+export default Participant
