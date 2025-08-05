@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, ChangeEvent, DragEvent } from "react"
+import { useState, type DragEvent } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Calendar, MapPin, Users, Tag, Info, ChevronRight, ChevronLeft, Loader2, Copy, Check, Eye } from "lucide-react"
+import { Calendar, MapPin, Users, Info, ChevronRight, ChevronLeft, Loader2, Copy, Check, Eye } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -29,7 +29,7 @@ type EventData = {
   endDate: string
   location: {
     name: string
-    address: string
+    street: string
     city: string
     country: string
     capacity: number
@@ -62,7 +62,7 @@ export default function CreateEventPage() {
     endDate: "",
     location: {
       name: "",
-      address: "",
+      street: "",
       city: "",
       country: "",
       capacity: 0,
@@ -171,14 +171,13 @@ export default function CreateEventPage() {
       image: eventData.image.trim() || null,
       venue: {
         name: eventData.location.name.trim() || "Lieu à définir",
-        address: eventData.location.address.trim() || "Adresse à définir", // ✅ corrigé ici
+        street: eventData.location.street.trim() || "Adresse à définir", // ✅ corrigé ici
         city: eventData.location.city.trim() || "Ville à définir",
         country: eventData.location.country.trim() || "Pays à définir",
         capacity: Number(eventData.location.capacity) || Number(eventData.capacity) || 100,
       },
     }
   }
-
 
   const handleImageDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -211,11 +210,33 @@ export default function CreateEventPage() {
     }
   }
 
+  // Fonction utilitaire pour lire un cookie
+  const getCookie = (name: string) => {
+    if (typeof document === "undefined") return null // S'assurer que nous sommes côté client
+    const value = `; ${document.cookie}`
+    const parts = value.split(`; ${name}=`)
+    if (parts.length === 2) return parts.pop()?.split(";").shift()
+    return null
+  }
+
   const handleSubmit = async (publish = false) => {
     try {
       setIsSubmitting(true)
 
       let imageUrl = ""
+
+      // Récupérer le token JWT depuis les cookies
+      const token = getCookie("token") // Assurez-vous que 'token' est le nom de votre cookie JWT
+
+      if (!token) {
+        toast({
+          title: "Erreur d'authentification",
+          description: "Vous devez être connecté pour créer un événement.",
+          variant: "destructive",
+        })
+        setIsSubmitting(false)
+        return
+      }
 
       if (imageFile) {
         const formData = new FormData()
@@ -224,13 +245,19 @@ export default function CreateEventPage() {
         const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload`, {
           method: "POST",
           body: formData,
+          headers: {
+            // Ajoutez le token pour l'upload d'image si cette route est aussi protégée
+            Authorization: `Bearer ${token}`,
+          },
         })
 
         if (uploadResponse.ok) {
           const uploadResult = await uploadResponse.json()
           imageUrl = uploadResult.url
         } else {
-          throw new Error("Échec de l’upload d’image.")
+          const errorText = await uploadResponse.text()
+          console.error("Erreur d'upload d'image:", uploadResponse.status, errorText)
+          throw new Error(`Échec de l’upload d’image: ${uploadResponse.statusText || errorText}`)
         }
       }
 
@@ -243,6 +270,8 @@ export default function CreateEventPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          // Ajoutez le token JWT à l'en-tête Authorization
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(dataToSubmit),
       })
@@ -283,7 +312,6 @@ export default function CreateEventPage() {
       setIsSubmitting(false)
     }
   }
-
 
   const goToNextTab = () => {
     if (activeTab === "basic") setActiveTab("details")
@@ -330,11 +358,6 @@ export default function CreateEventPage() {
                 <MapPin className="h-4 w-4" />
                 <span className="hidden sm:inline">Lieu et capacité</span>
                 <span className="sm:hidden">Lieu</span>
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-2">
-                <Tag className="h-4 w-4" />
-                <span className="hidden sm:inline">Paramètres</span>
-                <span className="sm:hidden">Params</span>
               </TabsTrigger>
             </TabsList>
 
@@ -444,7 +467,7 @@ export default function CreateEventPage() {
               </div>
 
               <div className="flex justify-between">
-                <Button variant="outline" onClick={goToPreviousTab} className="flex items-center">
+                <Button variant="outline" onClick={goToPreviousTab} className="flex items-center bg-transparent">
                   <ChevronLeft className="mr-2 h-4 w-4" /> Précédent
                 </Button>
                 <Button onClick={goToNextTab} className="flex items-center">
@@ -470,8 +493,8 @@ export default function CreateEventPage() {
                   <Input
                     id="locationAddress"
                     placeholder="Adresse complète"
-                    value={eventData.location.address}
-                    onChange={(e) => handleLocationChange("address", e.target.value)}
+                    value={eventData.location.street}
+                    onChange={(e) => handleLocationChange("street", e.target.value)}
                   />
                 </div>
 
@@ -515,7 +538,7 @@ export default function CreateEventPage() {
               </div>
 
               <div className="flex justify-between">
-                <Button variant="outline" onClick={goToPreviousTab} className="flex items-center">
+                <Button variant="outline" onClick={goToPreviousTab} className="flex items-center bg-transparent">
                   <ChevronLeft className="mr-2 h-4 w-4" /> Précédent
                 </Button>
                 <Button onClick={goToNextTab} className="flex items-center">
@@ -609,7 +632,7 @@ export default function CreateEventPage() {
               </div>
 
               <div className="flex justify-between">
-                <Button variant="outline" onClick={goToPreviousTab} className="flex items-center">
+                <Button variant="outline" onClick={goToPreviousTab} className="flex items-center bg-transparent">
                   <ChevronLeft className="mr-2 h-4 w-4" /> Précédent
                 </Button>
               </div>
@@ -648,7 +671,6 @@ export default function CreateEventPage() {
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Créer l'événement
             </Button>
-
           </div>
         </CardFooter>
       </Card>
@@ -775,7 +797,7 @@ export default function CreateEventPage() {
                     >
                       <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
-                    </svg>
+                      </svg>
                       Twitter
                     </Button>
 
