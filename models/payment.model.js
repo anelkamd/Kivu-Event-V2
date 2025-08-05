@@ -1,74 +1,84 @@
 import { DataTypes } from "sequelize"
-import { v4 as uuidv4 } from "uuid"
 import { sequelize } from "../config/database.js"
+// Importez les modèles pour les références, mais les associations seront définies dans index.js
+import User from "./User.js"
+import Event from "./Event.js"
 
 const Payment = sequelize.define(
-    "Payment",
-    {
-        id: {
-            type: DataTypes.STRING,
-            primaryKey: true,
-            defaultValue: () => uuidv4(),
-        },
-        userId: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            field: "user_id",
-            references: {
-                model: "users",
-                key: "id",
-            },
-        },
-        eventId: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            field: "event_id",
-            references: {
-                model: "events",
-                key: "id",
-            },
-        },
-        amount: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-        },
-        currency: {
-            type: DataTypes.STRING(3),
-            defaultValue: "USD",
-        },
-        status: {
-            type: DataTypes.ENUM("pending", "completed", "failed", "refunded"),
-            defaultValue: "pending",
-        },
-        paymentIntentId: {
-            type: DataTypes.STRING,
-            field: "payment_intent_id",
-        },
-        paymentMethod: {
-            type: DataTypes.STRING(50),
-            field: "payment_method",
-        },
-        receiptUrl: {
-            type: DataTypes.STRING,
-            field: "receipt_url",
-        },
-        createdAt: {
-            type: DataTypes.DATE,
-            defaultValue: DataTypes.NOW,
-            field: "created_at",
-        },
-        updatedAt: {
-            type: DataTypes.DATE,
-            defaultValue: DataTypes.NOW,
-            field: "updated_at",
-        },
+  "Payment",
+  {
+    id: {
+      type: DataTypes.UUID, // Changé de STRING à UUID
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4, // Changé de uuidv4() à DataTypes.UUIDV4
     },
-    {
-        tableName: "payments",
-        timestamps: true,
-        underscored: true,
-    }
+    userId: {
+      type: DataTypes.UUID, // Changé de STRING à UUID
+      allowNull: false,
+      field: "user_id",
+      references: {
+        model: User, // Référence directe au modèle User
+        key: "id",
+      },
+    },
+    eventId: {
+      type: DataTypes.UUID, // Changé de STRING à UUID
+      allowNull: false,
+      field: "event_id",
+      references: {
+        model: Event, // Référence directe au modèle Event
+        key: "id",
+      },
+    },
+    amount: {
+      type: DataTypes.DECIMAL(10, 2), // Changé de INTEGER à DECIMAL pour la monnaie
+      allowNull: false,
+    },
+    currency: {
+      type: DataTypes.STRING(3),
+      defaultValue: "USD",
+      allowNull: false, // Ajouté explicitement
+    },
+    status: {
+      type: DataTypes.ENUM("pending", "completed", "failed", "refunded"),
+      defaultValue: "pending",
+      allowNull: false, // Ajouté explicitement
+    },
+    paymentIntentId: {
+      type: DataTypes.STRING(255), // Ajouté une longueur
+      allowNull: true, // Ajouté explicitement
+      field: "payment_intent_id",
+    },
+    paymentMethod: {
+      type: DataTypes.STRING(50),
+      allowNull: true, // Ajouté explicitement
+      field: "payment_method",
+    },
+    receiptUrl: {
+      type: DataTypes.STRING(255), // Ajouté une longueur
+      allowNull: true, // Ajouté explicitement
+      field: "receipt_url",
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      allowNull: false, // Ajouté explicitement
+      field: "created_at",
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      allowNull: false, // Ajouté explicitement
+      field: "updated_at",
+    },
+  },
+  {
+    tableName: "payments",
+    timestamps: true,
+    underscored: true,
+  },
 )
 
-export default Payment
+// IMPORTANT: Les associations sont maintenant définies dans models/index.js
 
+export default Payment
