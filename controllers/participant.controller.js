@@ -1,162 +1,57 @@
-import { Op } from "sequelize"
-import { Participant, User, Event } from "../models/index.js"
-import { asyncHandler } from "../middleware/async.middleware.js"
-import { AppError } from "../utils/appError.js"
+import participantService from "../services/participantService.js"
+import { validate } from "uuid" // Pour valider l'ID de l'événement
 
-// @desc    Obtenir tous les participants
-// @route   GET /api/participants
-// @access  Private (Admin, Organizer)
-export const getParticipants = asyncHandler(async (req, res) => {
-    // Construire les options de requête
-    const queryOptions = {
-        where: {},
-        include: [
-            {
-                model: User,
-                attributes: ["id", "firstName", "lastName", "email"],
-            },
-            {
-                model: Event,
-                attributes: ["id", "title", "startDate", "endDate"],
-            },
-        ],
-        order: [["createdAt", "DESC"]],
-    }
+class ParticipantController {
+  async register(req, res) {
+    try {
+      const { eventId } = req.params
+      const { firstName, lastName, email } = req.body
+      const userId = req.user ? req.user.id : null // L'ID de l'utilisateur si connecté, sinon null
 
-    // Filtrage par événement
-    if (req.query.eventId) {
-        queryOptions.where.eventId = req.query.eventId
-    }
+      if (!validate(eventId)) {
+        return res.status(400).json({ success: false, error: "ID d'événement invalide." })
+      }
 
-    // Filtrage par statut
-    if (req.query.status) {
-        queryOptions.where.status = req.query.status
-    }
+      // Validation des données d'entrée
+      if (!userId) {
+        // Pour les inscriptions anonymes
+        if (!firstName || !lastName || !email) {
+          return res.status(400).json({
+            success: false,
+            error: "Le nom, prénom et l'email sont requis pour l'inscription anonyme.",
+          })
+        }
+        // Validation basique de l'email
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return res.status(400).json({ success: false, error: "Format d'email invalide." })
+        }
+      } else {
+        // Pour les utilisateurs connectés, l'email et le nom seront tirés du profil utilisateur
+        // Pas de validation supplémentaire ici, car le middleware d'authentification gère l'utilisateur
+      }
 
-    // Pagination
-    const page = Number.parseInt(req.query.page, 10) || 1
-    const limit = Number.parseInt(req.query.limit, 10) || 10
-    const offset = (page - 1) * limit
+      const participantData = { userId, firstName, lastName, email }
+      const newParticipant = await participantService.registerParticipant(eventId, participantData)
 
-    queryOptions.limit = limit
-    queryOptions.offset = offset
-
-    // Exécuter la requête
-    const { count, rows: participants } = await Participant.findAndCountAll(queryOptions)
-
-    res.status(200).json({
+      return res.status(201).json({
         success: true,
-        count: participants.length,
-        pagination: {
-            total: count,
-            page,
-            pages: Math.ceil(count / limit),
-        },
-        data: participants,
-    })
-})
-
-// @desc    Obtenir un participant par ID
-// @route   GET /api/participants/:id
-// @access  Private (Admin, Organizer)
-export const getParticipant = asyncHandler(async (req, res, next) => {
-    const participant = await Participant.findByPk(req.params.id, {
-        include: [
-            {
-                model: User,
-                attributes: ["id", "firstName", "lastName", "email", "phoneNumber"],
-            },
-            {
-                model: Event,
-                attributes: ["id", "title", "startDate", "endDate", "status"],
-            },
-        ],
-    })
-
-    if (!participant) {
-        return next(new AppError(`Participant non trouvé avec l'ID ${req.params.id}`, 404))
+        message: "Inscription à l'événement réussie !",
+        data: newParticipant,
+      })
+    } catch (error) {
+      console.error("Erreur lors de l'inscription du participant:", error)
+      // Gérer les erreurs spécifiques du service
+      if (error.message.includes("déjà inscrit")) {
+        return res.status(409).json({ success: false, error: error.message })
+      }
+      return res.status(500).json({
+        success: false,
+        error: error.message || "Erreur lors de l'inscription du participant",
+      })
     }
+  }
 
-    res.status(200).json({
-        success: true,
-        data: participant,
-    })
-})
+  // Vous pouvez ajouter d'autres méthodes ici (ex: getParticipantsForEvent, updateParticipantStatus, etc.)
+}
 
-// @desc    Mettre à jour un participant
-// @route   PUT /api/participants/:id
-// @access  Private (Admin, Organizer)
-export const updateParticipant = asyncHandler(async (req, res, next) => {
-    const participant = await Participant.findByPk(req.params.id)
-
-    if (!participant) {
-        return next(new AppError(`Participant non trouvé avec l'ID ${req.params.id}`, 404))
-    }
-
-    // Mettre à jour le participant
-    await participant.update(req.body)
-
-    res.status(200).json({
-        success: true,
-        data: participant,
-    })
-})
-
-// @desc    Supprimer un participant
-// @route   DELETE /api/participants/:id
-// @access  Private (Admin)
-export const deleteParticipant = asyncHandler(async (req, res, next) => {
-    const participant = await Participant.findByPk(req.params.id)
-
-    if (!participant) {
-        return next(new AppError(`Participant non trouvé avec l'ID ${req.params.id}`, 404))
-    }
-
-    // Supprimer le participant
-    await participant.destroy()
-
-    res.status(200).json({
-        success: true,
-        data: {},
-    })
-})
-
-// @desc    Obtenir les participants d'un utilisateur
-// @route   GET /api/participants/user/:userId
-// @access  Private
-export const getUserParticipations = asyncHandler(async (req, res) => {
-    const participants = await Participant.findAll({
-        where: { userId: req.params.userId },
-        include: [
-            {
-                model: Event,
-                attributes: ["id", "title", "startDate", "endDate", "status"],
-            },
-        ],
-    })
-
-    res.status(200).json({
-        success: true,
-        count: participants.length,
-        data: participants,
-    })
-})
-
-// @desc    Marquer un participant comme présent
-// @route   PUT /api/participants/:id/attend
-// @access  Private (Admin, Organizer)
-export const markAttendance = asyncHandler(async (req, res, next) => {
-    const participant = await Participant.findByPk(req.params.id)
-
-    if (!participant) {
-        return next(new AppError(`Participant non trouvé avec l'ID ${req.params.id}`, 404))
-    }
-
-    // Mettre à jour le statut du participant
-    await participant.update({ status: "attended" })
-
-    res.status(200).json({
-        success: true,
-        data: participant,
-    })
-})
+export default new ParticipantController()
