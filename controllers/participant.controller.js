@@ -1,7 +1,9 @@
 import participantService from "../services/participantService.js"
 import { validate } from "uuid" // Pour valider l'ID de l'événement
 
-class ParticipantController {
+// Nous allons exporter un objet contenant toutes les méthodes du contrôleur
+// au lieu d'une classe par défaut.
+const participantController = {
   async register(req, res) {
     try {
       const { eventId } = req.params
@@ -49,9 +51,95 @@ class ParticipantController {
         error: error.message || "Erreur lors de l'inscription du participant",
       })
     }
-  }
+  },
 
-  // Vous pouvez ajouter d'autres méthodes ici (ex: getParticipantsForEvent, updateParticipantStatus, etc.)
+  // Méthodes placeholder pour les autres routes
+  async getParticipants(req, res) {
+    try {
+      // Logique pour récupérer tous les participants (avec filtres/pagination si nécessaire)
+      // Exemple: const participants = await participantService.getAllParticipants(req.query);
+      return res.status(200).json({ success: true, message: "Liste des participants (à implémenter)", data: [] })
+    } catch (error) {
+      console.error("Erreur lors de la récupération des participants:", error)
+      return res.status(500).json({ success: false, error: "Erreur lors de la récupération des participants" })
+    }
+  },
+
+  async getParticipant(req, res) {
+    try {
+      const { id } = req.params
+      // Logique pour récupérer un participant par ID
+      // Exemple: const participant = await participantService.getParticipantById(id);
+      return res
+        .status(200)
+        .json({ success: true, message: `Détails du participant ${id} (à implémenter)`, data: null })
+    } catch (error) {
+      console.error("Erreur lors de la récupération du participant:", error)
+      return res.status(500).json({ success: false, error: "Erreur lors de la récupération du participant" })
+    }
+  },
+
+  async updateParticipant(req, res) {
+    try {
+      const { id } = req.params
+      const updateData = req.body
+      // Logique pour mettre à jour un participant
+      // Exemple: const updated = await participantService.updateParticipant(id, updateData);
+      return res.status(200).json({ success: true, message: `Participant ${id} mis à jour (à implémenter)` })
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour du participant:", error)
+      return res.status(500).json({ success: false, error: "Erreur lors de la mise à jour du participant" })
+    }
+  },
+
+  async deleteParticipant(req, res) {
+    try {
+      const { id } = req.params
+      // Logique pour supprimer un participant
+      // Exemple: const deleted = await participantService.deleteParticipant(id);
+      return res.status(200).json({ success: true, message: `Participant ${id} supprimé (à implémenter)` })
+    } catch (error) {
+      console.error("Erreur lors de la suppression du participant:", error)
+      return res.status(500).json({ success: false, error: "Erreur lors de la suppression du participant" })
+    }
+  },
+
+  async getUserParticipations(req, res) {
+    try {
+      const { userId } = req.params
+      // Logique pour récupérer les participations d'un utilisateur
+      // Exemple: const participations = await participantService.getParticipationsByUserId(userId);
+      return res
+        .status(200)
+        .json({ success: true, message: `Participations de l'utilisateur ${userId} (à implémenter)`, data: [] })
+    } catch (error) {
+      console.error("Erreur lors de la récupération des participations de l'utilisateur:", error)
+      return res
+        .status(500)
+        .json({ success: false, error: "Erreur lors de la récupération des participations de l'utilisateur" })
+    }
+  },
+
+  async markAttendance(req, res) {
+    try {
+      const { id } = req.params
+      // Logique pour marquer la présence d'un participant
+      // Exemple: const updated = await participantService.markAttendance(id);
+      return res.status(200).json({ success: true, message: `Présence du participant ${id} marquée (à implémenter)` })
+    } catch (error) {
+      console.error("Erreur lors du marquage de la présence:", error)
+      return res.status(500).json({ success: false, error: "Erreur lors du marquage de la présence" })
+    }
+  },
 }
 
-export default new ParticipantController()
+// Exportez chaque méthode individuellement
+export const {
+  register,
+  getParticipants,
+  getParticipant,
+  updateParticipant,
+  deleteParticipant,
+  getUserParticipations,
+  markAttendance,
+} = participantController
