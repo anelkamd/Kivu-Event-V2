@@ -203,7 +203,7 @@ export default function CreateEventPage() {
 
   const copyEventLink = () => {
     if (createdEvent) {
-      const eventLink = `${window.location.origin}/events/${createdEvent.id}`
+      const eventLink = `${window.location.origin}/events/${createdEvent.id}/register`
       navigator.clipboard.writeText(eventLink)
       setLinkCopied(true)
       setTimeout(() => setLinkCopied(false), 2000)
