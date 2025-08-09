@@ -20,54 +20,57 @@ import uploadRoutes from "./routes/uploadRoutes.js"
 import contactRoutes from "./routes/contact.routes.js"
 import adminRoutes from "./routes/admin.js"
 
+// Middlewares
 import { errorHandler } from "./middleware/error.middleware.js"
+
+// DB
 import { sequelize } from "./config/database.js"
 
-// Setup
+// ==============================
+// Configuration de l'application
+// ==============================
 dotenv.config()
 const app = express()
 const PORT = process.env.PORT || 5003
-
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Middleware de sécurité
+// ==============================
+// Sécurité
+// ==============================
 app.use(
   helmet({
     crossOriginEmbedderPolicy: false,
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
-      },
-    },
-  }),
+    contentSecurityPolicy: false, // désactivé si CORS est actif
+  })
 )
 
-// Configuration CORS
+// ==============================
+// CORS
+// ==============================
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  }),
+  })
 )
 
-// Middlewares
+// ==============================
+// Middlewares généraux
+// ==============================
 app.use(compression())
 app.use(express.json({ limit: "10mb" }))
 app.use(express.urlencoded({ extended: true, limit: "10mb" }))
-
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"))
 }
-
 app.use(express.static(path.join(__dirname, "public")))
 
-// Routes
+// ==============================
+// Routes API
+// ==============================
 app.use("/api/events", eventRoutes)
 app.use("/api/auth", authRoutes)
 app.use("/api/venues", venueRoutes)
@@ -79,7 +82,9 @@ app.use("/api", uploadRoutes)
 app.use("/api/contact", contactRoutes)
 app.use("/api/admin", adminRoutes)
 
+// ==============================
 // Route de santé
+// ==============================
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
@@ -89,7 +94,9 @@ app.get("/health", (req, res) => {
   })
 })
 
-// Route par défaut
+// ==============================
+// Page d'accueil API
+// ==============================
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -111,7 +118,9 @@ app.get("/", (req, res) => {
   })
 })
 
-// Middleware de gestion des erreurs 404
+// ==============================
+// Middleware 404
+// ==============================
 app.use("*", (req, res) => {
   res.status(404).json({
     success: false,
@@ -121,50 +130,44 @@ app.use("*", (req, res) => {
   })
 })
 
+// ==============================
 // Gestion des erreurs
+// ==============================
 app.use(errorHandler)
 
+// ==============================
+// Lancement du serveur
+// ==============================
 const startServer = async () => {
   try {
     await sequelize.authenticate()
-    console.log(colors.cyan.bold("✓ Connexion à la base de données établie avec succès"))
+    console.log(colors.cyan.bold("✓ Connexion à la base de données réussie"))
 
-    if (process.env.NODE_ENV === "development") {
-      await sequelize.sync({ alter: true })
-      console.log(colors.yellow("✓ Modèles synchronisés avec la base de données"))
-    }
+    await sequelize.sync()
+    console.log(colors.yellow("✓ Modèles synchronisés avec la base de données"))
 
     app.listen(PORT, () => {
-      console.log(
-        colors.rainbow(`
-      ╔═══════════════════════════════════════════════╗
-      ║                                               ║
-      ║       KIVU EVENT API - Version 1.0.0          ║
-      ║                                               ║
-      ╚═══════════════════════════════════════════════╝
-      `),
-      )
-      console.log(colors.green.bold(`✓ Serveur démarré sur le port ${PORT} en mode ${process.env.NODE_ENV}`))
-      console.log(colors.blue(`📧 Service email: ${process.env.SMTP_HOST || "Non configuré"}`))
-      console.log(colors.magenta(`🌐 Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:3000"}`))
+      console.log(colors.green.bold(`🚀 Serveur démarré sur le port ${PORT} [${process.env.NODE_ENV}]`))
+      console.log(colors.blue(`🌐 Frontend: ${process.env.FRONTEND_URL || "http://localhost:3000"}`))
+      console.log(colors.magenta(`📧 Service email: ${process.env.SMTP_HOST || "Non configuré"}`))
     })
   } catch (error) {
-    console.error(colors.red.bold("✗ Erreur lors de la connexion à la base de données:"), error.message)
+    console.error(colors.red.bold("✗ Erreur DB:"), error.message)
     process.exit(1)
   }
 }
 
-// Gestion propre de l'arrêt du serveur
+// ==============================
+// Gestion des signaux système
+// ==============================
 process.on("SIGTERM", () => {
   console.log(colors.yellow("SIGTERM reçu, arrêt du serveur..."))
   process.exit(0)
 })
-
 process.on("SIGINT", () => {
   console.log(colors.yellow("SIGINT reçu, arrêt du serveur..."))
   process.exit(0)
 })
 
 startServer()
-
 export default app
