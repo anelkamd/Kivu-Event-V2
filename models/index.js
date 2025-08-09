@@ -1,61 +1,91 @@
-// Importation des modèles
-import { sequelize } from "../config/database.js" // Importez sequelize ici
+import { sequelize } from "../config/database.js"
 import User from "./User.js"
 import Event from "./Event.js"
 import Venue from "./Venue.js"
 import Speaker from "./Speaker.js"
-import Participant from "./Participant.js" // Assurez-vous que le nom du fichier est correct
-import Agenda from "./agenda.model.js" // Assurez-vous que le nom du fichier est correct
-import Payment from "./payment.model.js" // Assurez-vous que le nom du fichier est correct
+import Participant from "./Participant.js"
+import Agenda from "./agenda.model.js" 
+import Payment from "./payment.model.js" 
 
 // Définition des associations entre les modèles
 // Assurez-vous que tous les modèles sont correctement initialisés avant de définir les associations
 
-// User - Event (Organisateur)
+// 1. User - Event (Organisateur)
 User.hasMany(Event, { foreignKey: "organizer_id", as: "organizedEvents" })
-Event.belongsTo(User, { foreignKey: "organizer_id", as: "organizer" })
+Event.belongsTo(User, {
+  foreignKey: "organizer_id",
+  as: "organizer",
+  onDelete: "NO ACTION", // Pas SET NULL car organizer_id est NOT NULL
+})
 
-// Venue - Event
-Venue.hasMany(Event, { foreignKey: "venue_id", as: "eventsInVenue" }) // Ajout d'un alias unique
-Event.belongsTo(Venue, { foreignKey: "venue_id", as: "venue" }) // Ajout d'un alias unique
+// 2. Venue - Event
+Venue.hasMany(Event, { foreignKey: "venue_id", as: "eventsInVenue" })
+Event.belongsTo(Venue, {
+  foreignKey: "venue_id",
+  as: "venue",
+  onDelete: "SET NULL", // venue_id nullable
+})
 
-// Event - Speaker (Many-to-Many)
+// 3. Event - Speaker (Many-to-Many)
 Event.belongsToMany(Speaker, {
   through: "event_speakers",
   foreignKey: "event_id",
   otherKey: "speaker_id",
-  as: "speakers", // Ajout d'un alias
+  as: "speakers",
 })
 Speaker.belongsToMany(Event, {
   through: "event_speakers",
   foreignKey: "speaker_id",
   otherKey: "event_id",
-  as: "events", // Ajout d'un alias
+  as: "events",
 })
 
-// User - Participant
-User.hasMany(Participant, { foreignKey: "user_id", as: "participations" }) // Ajout d'un alias
-Participant.belongsTo(User, { foreignKey: "user_id", as: "user" }) // Ajout d'un alias
+// 4. User - Participant
+User.hasMany(Participant, { foreignKey: "user_id", as: "participations" })
+Participant.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+  onDelete: "SET NULL", // user_id nullable
+})
 
-// Event - Participant
-Event.hasMany(Participant, { foreignKey: "event_id", as: "participants" }) // Ajout d'un alias
-Participant.belongsTo(Event, { foreignKey: "event_id", as: "event" }) // Ajout d'un alias
+// 5. Participant - Event
+Event.hasMany(Participant, { foreignKey: "event_id", as: "participants" })
+Participant.belongsTo(Event, {
+  foreignKey: "event_id",
+  as: "event",
+  onDelete: "NO ACTION", // au lieu de SET NULL
+})
 
-// Event - Agenda
-Event.hasMany(Agenda, { foreignKey: "event_id", as: "agendaItems" }) // Ajout d'un alias
-Agenda.belongsTo(Event, { foreignKey: "event_id", as: "event" }) // Ajout d'un alias
+// 6. Event - Agenda
+Event.hasMany(Agenda, { foreignKey: "event_id", as: "agendaItems" })
+Agenda.belongsTo(Event, {
+  foreignKey: "event_id",
+  as: "event",
+  onDelete: "NO ACTION",
+})
 
-// Speaker - Agenda
-Speaker.hasMany(Agenda, { foreignKey: "speaker_id", as: "agendaSessions" }) // Ajout d'un alias
-Agenda.belongsTo(Speaker, { foreignKey: "speaker_id", as: "speaker" }) // Ajout d'un alias
+// 7. Speaker - Agenda
+Speaker.hasMany(Agenda, { foreignKey: "speaker_id", as: "agendaSessions" })
+Agenda.belongsTo(Speaker, {
+  foreignKey: "speaker_id",
+  as: "speaker",
+  onDelete: "SET NULL", // speaker_id nullable
+})
 
-// User - Payment
-User.hasMany(Payment, { foreignKey: "user_id", as: "payments" }) // Ajout d'un alias
-Payment.belongsTo(User, { foreignKey: "user_id", as: "user" }) // Ajout d'un alias
+// 8. User - Payment
+User.hasMany(Payment, { foreignKey: "user_id", as: "payments" })
+Payment.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+  onDelete: "NO ACTION", // user_id NOT NULL
+})
 
-// Event - Payment
-Event.hasMany(Payment, { foreignKey: "event_id", as: "eventPayments" }) // Ajout d'un alias
-Payment.belongsTo(Event, { foreignKey: "event_id", as: "event" }) // Ajout d'un alias
+// 9. Event - Payment
+Event.hasMany(Payment, { foreignKey: "event_id", as: "eventPayments" })
+Payment.belongsTo(Event, {
+  foreignKey: "event_id",
+  as: "event",
+  onDelete: "NO ACTION", // event_id NOT NULL
+})
 
-// Exportation des modèles et de la connexion Sequelize
 export { sequelize, User, Event, Venue, Speaker, Participant, Agenda, Payment }
