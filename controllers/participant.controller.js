@@ -1,145 +1,286 @@
-import participantService from "../services/participantService.js"
-import { validate } from "uuid" // Pour valider l'ID de l'événement
+import { Participant } from "../models/Participant.js"
+import { Event } from "../models/Event.js"
+import { User } from "../models/User.js"
+import { v4 as uuidv4 } from "uuid"
 
-// Nous allons exporter un objet contenant toutes les méthodes du contrôleur
-// au lieu d'une classe par défaut.
-const participantController = {
-  async register(req, res) {
-    try {
-      const { eventId } = req.params
-      const { firstName, lastName, email } = req.body
-      const userId = req.user ? req.user.id : null // L'ID de l'utilisateur si connecté, sinon null
+// Inscription d'un participant à un événement
+export const registerParticipant = async (req, res) => {
+  try {
+    const { eventId } = req.params
+    const { firstName, lastName, email, phone, company, position, dietaryRestrictions, specialNeeds } = req.body
 
-      if (!validate(eventId)) {
-        return res.status(400).json({ success: false, error: "ID d'événement invalide." })
-      }
+    console.log("🎯 Inscription participant:", {
+      eventId,
+      email,
+      hasUser: !!req.user,
+      body: req.body,
+    })
 
-      // Validation des données d'entrée
-      if (!userId) {
-        // Pour les inscriptions anonymes
-        if (!firstName || !lastName || !email) {
-          return res.status(400).json({
-            success: false,
-            error: "Le nom, prénom et l'email sont requis pour l'inscription anonyme.",
-          })
-        }
-        // Validation basique de l'email
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          return res.status(400).json({ success: false, error: "Format d'email invalide." })
-        }
-      } else {
-        // Pour les utilisateurs connectés, l'email et le nom seront tirés du profil utilisateur
-        // Pas de validation supplémentaire ici, car le middleware d'authentification gère l'utilisateur
-      }
-
-      const participantData = { userId, firstName, lastName, email }
-      const newParticipant = await participantService.registerParticipant(eventId, participantData)
-
-      return res.status(201).json({
-        success: true,
-        message: "Inscription à l'événement réussie !",
-        data: newParticipant,
-      })
-    } catch (error) {
-      console.error("Erreur lors de l'inscription du participant:", error)
-      // Gérer les erreurs spécifiques du service
-      if (error.message.includes("déjà inscrit")) {
-        return res.status(409).json({ success: false, error: error.message })
-      }
-      return res.status(500).json({
+    // Validation des données requises
+    if (!firstName || !lastName || !email) {
+      return res.status(400).json({
         success: false,
-        error: error.message || "Erreur lors de l'inscription du participant",
+        message: "Les champs prénom, nom et email sont obligatoires",
       })
     }
-  },
 
-  // Méthodes placeholder pour les autres routes
-  async getParticipants(req, res) {
-    try {
-      // Logique pour récupérer tous les participants (avec filtres/pagination si nécessaire)
-      // Exemple: const participants = await participantService.getAllParticipants(req.query);
-      return res.status(200).json({ success: true, message: "Liste des participants (à implémenter)", data: [] })
-    } catch (error) {
-      console.error("Erreur lors de la récupération des participants:", error)
-      return res.status(500).json({ success: false, error: "Erreur lors de la récupération des participants" })
+    // Vérifier que l'événement existe
+    const event = await Event.findByPk(eventId)
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Événement non trouvé",
+      })
     }
-  },
 
-  async getParticipant(req, res) {
-    try {
-      const { id } = req.params
-      // Logique pour récupérer un participant par ID
-      // Exemple: const participant = await participantService.getParticipantById(id);
-      return res
-        .status(200)
-        .json({ success: true, message: `Détails du participant ${id} (à implémenter)`, data: null })
-    } catch (error) {
-      console.error("Erreur lors de la récupération du participant:", error)
-      return res.status(500).json({ success: false, error: "Erreur lors de la récupération du participant" })
-    }
-  },
+    // Vérifier si l'événement a encore de la place
+    const currentParticipants = await Participant.count({
+      where: { eventId },
+    })
 
-  async updateParticipant(req, res) {
-    try {
-      const { id } = req.params
-      const updateData = req.body
-      // Logique pour mettre à jour un participant
-      // Exemple: const updated = await participantService.updateParticipant(id, updateData);
-      return res.status(200).json({ success: true, message: `Participant ${id} mis à jour (à implémenter)` })
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour du participant:", error)
-      return res.status(500).json({ success: false, error: "Erreur lors de la mise à jour du participant" })
+    if (event.capacity && currentParticipants >= event.capacity) {
+      return res.status(400).json({
+        success: false,
+        message: "L'événement est complet",
+      })
     }
-  },
 
-  async deleteParticipant(req, res) {
-    try {
-      const { id } = req.params
-      // Logique pour supprimer un participant
-      // Exemple: const deleted = await participantService.deleteParticipant(id);
-      return res.status(200).json({ success: true, message: `Participant ${id} supprimé (à implémenter)` })
-    } catch (error) {
-      console.error("Erreur lors de la suppression du participant:", error)
-      return res.status(500).json({ success: false, error: "Erreur lors de la suppression du participant" })
-    }
-  },
+    // Vérifier si l'utilisateur n'est pas déjà inscrit
+    const existingParticipant = await Participant.findOne({
+      where: {
+        eventId,
+        email: email.toLowerCase(),
+      },
+    })
 
-  async getUserParticipations(req, res) {
-    try {
-      const { userId } = req.params
-      // Logique pour récupérer les participations d'un utilisateur
-      // Exemple: const participations = await participantService.getParticipationsByUserId(userId);
-      return res
-        .status(200)
-        .json({ success: true, message: `Participations de l'utilisateur ${userId} (à implémenter)`, data: [] })
-    } catch (error) {
-      console.error("Erreur lors de la récupération des participations de l'utilisateur:", error)
-      return res
-        .status(500)
-        .json({ success: false, error: "Erreur lors de la récupération des participations de l'utilisateur" })
+    if (existingParticipant) {
+      return res.status(400).json({
+        success: false,
+        message: "Vous êtes déjà inscrit à cet événement",
+      })
     }
-  },
 
-  async markAttendance(req, res) {
-    try {
-      const { id } = req.params
-      // Logique pour marquer la présence d'un participant
-      // Exemple: const updated = await participantService.markAttendance(id);
-      return res.status(200).json({ success: true, message: `Présence du participant ${id} marquée (à implémenter)` })
-    } catch (error) {
-      console.error("Erreur lors du marquage de la présence:", error)
-      return res.status(500).json({ success: false, error: "Erreur lors du marquage de la présence" })
+    // Créer le participant
+    const participantData = {
+      id: uuidv4(),
+      eventId,
+      userId: req.user?.id || null, // Optionnel si utilisateur connecté
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.toLowerCase().trim(),
+      phone: phone?.trim() || null,
+      company: company?.trim() || null,
+      position: position?.trim() || null,
+      dietaryRestrictions: dietaryRestrictions?.trim() || null,
+      specialNeeds: specialNeeds?.trim() || null,
+      registrationDate: new Date(),
+      status: "registered",
+      checkedIn: false,
     }
-  },
+
+    const participant = await Participant.create(participantData)
+
+    console.log("✅ Participant créé:", participant.id)
+
+    res.status(201).json({
+      success: true,
+      message: "Inscription réussie",
+      data: {
+        participant: {
+          id: participant.id,
+          firstName: participant.firstName,
+          lastName: participant.lastName,
+          email: participant.email,
+          status: participant.status,
+          registrationDate: participant.registrationDate,
+        },
+      },
+    })
+  } catch (error) {
+    console.error("❌ Erreur inscription participant:", error)
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de l'inscription",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    })
+  }
 }
 
-// Exportez chaque méthode individuellement
-export const {
-  register,
-  getParticipants,
-  getParticipant,
-  updateParticipant,
-  deleteParticipant,
-  getUserParticipations,
-  markAttendance,
-} = participantController
+// Récupérer tous les participants d'un événement
+export const getParticipantsByEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params
+
+    const participants = await Participant.findAll({
+      where: { eventId },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "firstName", "lastName", "email"],
+          required: false,
+        },
+      ],
+      order: [["registrationDate", "DESC"]],
+    })
+
+    res.json({
+      success: true,
+      data: { participants },
+    })
+  } catch (error) {
+    console.error("❌ Erreur récupération participants:", error)
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la récupération des participants",
+    })
+  }
+}
+
+// Récupérer un participant spécifique
+export const getParticipantById = async (req, res) => {
+  try {
+    const { eventId, participantId } = req.params
+
+    const participant = await Participant.findOne({
+      where: {
+        id: participantId,
+        eventId,
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "firstName", "lastName", "email"],
+          required: false,
+        },
+      ],
+    })
+
+    if (!participant) {
+      return res.status(404).json({
+        success: false,
+        message: "Participant non trouvé",
+      })
+    }
+
+    res.json({
+      success: true,
+      data: { participant },
+    })
+  } catch (error) {
+    console.error("❌ Erreur récupération participant:", error)
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la récupération du participant",
+    })
+  }
+}
+
+// Mettre à jour un participant
+export const updateParticipant = async (req, res) => {
+  try {
+    const { eventId, participantId } = req.params
+    const updateData = req.body
+
+    const participant = await Participant.findOne({
+      where: {
+        id: participantId,
+        eventId,
+      },
+    })
+
+    if (!participant) {
+      return res.status(404).json({
+        success: false,
+        message: "Participant non trouvé",
+      })
+    }
+
+    await participant.update(updateData)
+
+    res.json({
+      success: true,
+      message: "Participant mis à jour avec succès",
+      data: { participant },
+    })
+  } catch (error) {
+    console.error("❌ Erreur mise à jour participant:", error)
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la mise à jour du participant",
+    })
+  }
+}
+
+// Supprimer un participant
+export const deleteParticipant = async (req, res) => {
+  try {
+    const { eventId, participantId } = req.params
+
+    const participant = await Participant.findOne({
+      where: {
+        id: participantId,
+        eventId,
+      },
+    })
+
+    if (!participant) {
+      return res.status(404).json({
+        success: false,
+        message: "Participant non trouvé",
+      })
+    }
+
+    await participant.destroy()
+
+    res.json({
+      success: true,
+      message: "Participant supprimé avec succès",
+    })
+  } catch (error) {
+    console.error("❌ Erreur suppression participant:", error)
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la suppression du participant",
+    })
+  }
+}
+
+// Check-in d'un participant
+export const checkInParticipant = async (req, res) => {
+  try {
+    const { eventId, participantId } = req.params
+
+    const participant = await Participant.findOne({
+      where: {
+        id: participantId,
+        eventId,
+      },
+    })
+
+    if (!participant) {
+      return res.status(404).json({
+        success: false,
+        message: "Participant non trouvé",
+      })
+    }
+
+    await participant.update({
+      checkedIn: true,
+      checkInTime: new Date(),
+    })
+
+    res.json({
+      success: true,
+      message: "Check-in effectué avec succès",
+      data: { participant },
+    })
+  } catch (error) {
+    console.error("❌ Erreur check-in participant:", error)
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors du check-in",
+    })
+  }
+}
