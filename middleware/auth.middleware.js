@@ -1,60 +1,143 @@
 import jwt from "jsonwebtoken"
-import { asyncHandler } from "./async.middleware.js" // Assurez-vous que ce chemin est correct
-import { AppError } from "../utils/appError.js" // Assurez-vous que ce chemin est correct
-import { User } from "../models/index.js" // Importez votre modèle User
+import User from "../models/User.js"
 
-// Middleware pour protéger les routes
-export const protect = asyncHandler(async (req, res, next) => {
-  let token
-
-  // Vérifier si le token est présent dans les en-têtes d'autorisation (Bearer Token)
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-    token = req.headers.authorization.split(" ")[1]
-  } else if (req.cookies && req.cookies.token) {
-    // Ou dans les cookies
-    token = req.cookies.token
-  }
-
-  // Vérifier si le token existe
-  if (!token) {
-    console.log("DEBUG AUTH: Aucun token trouvé.")
-    return next(new AppError("Non autorisé à accéder à cette route (pas de token)", 401))
-  }
-
+// Middleware d'authentification obligatoire
+export const authenticateToken = async (req, res, next) => {
   try {
-    // Vérifier le token
-    console.log("DEBUG AUTH: Tentative de vérification du token...")
+    const authHeader = req.headers["authorization"]
+    const token = authHeader && authHeader.split(" ")[1]
+
+    if (!token) {
+      console.log("❌ Aucun token fourni")
+      return res.status(401).json({
+        success: false,
+        message: "Token d'accès requis",
+      })
+    }
+
+    if (!process.env.JWT_SECRET) {
+      console.error("❌ JWT_SECRET non configuré")
+      return res.status(500).json({
+        success: false,
+        message: "Erreur de configuration du serveur",
+      })
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    console.log("DEBUG AUTH: Token décodé:", decoded)
+    console.log("✅ Token décodé:", { userId: decoded.id, email: decoded.email })
 
-    // Ajouter l'utilisateur à la requête
+    // Vérifier que l'utilisateur existe toujours
     const user = await User.findByPk(decoded.id)
-
     if (!user) {
-      console.log("DEBUG AUTH: Utilisateur non trouvé pour l'ID:", decoded.id)
-      return next(new AppError("L'utilisateur associé à ce token n'existe plus", 401))
+      console.log("❌ Utilisateur non trouvé:", decoded.id)
+      return res.status(401).json({
+        success: false,
+        message: "Utilisateur non trouvé",
+      })
     }
 
-    req.user = user
-    console.log("DEBUG AUTH: req.user défini avec l'utilisateur ID:", req.user.id)
+    req.user = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+    }
+
     next()
-  } catch (err) {
-    console.error("DEBUG AUTH: Erreur lors de la vérification du token:", err.message)
-    return next(new AppError("Non autorisé à accéder à cette route (token invalide ou expiré)", 401))
-  }
-})
+  } catch (error) {
+    console.error("❌ Erreur authentification:", error.message)
 
-// Middleware pour autoriser certains rôles
-export const authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      console.log("DEBUG AUTH: req.user est indéfini dans authorize.")
-      return next(new AppError("Accès refusé: Informations utilisateur manquantes", 403))
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token expiré",
+      })
     }
-    if (!roles.includes(req.user.role)) {
-      console.log(`DEBUG AUTH: Rôle ${req.user.role} non autorisé pour cette route. Rôles requis: ${roles.join(", ")}`)
-      return next(new AppError(`Le rôle ${req.user.role} n'est pas autorisé à accéder à cette route`, 403))
+
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token invalide",
+      })
     }
+
+    return res.status(500).json({
+      success: false,
+      message: "Erreur lors de la vérification du token",
+    })
+  }
+}
+
+// Alias pour compatibilité avec les routes existantes
+export const protect = authenticateToken
+
+// Middleware d'authentification optionnelle (pour inscription anonyme)
+export const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers["authorization"]
+    const token = authHeader && authHeader.split(" ")[1]
+
+    if (!token) {
+      console.log("ℹ️ Aucun token fourni - accès anonyme autorisé")
+      req.user = null
+      return next()
+    }
+
+    if (!process.env.JWT_SECRET) {
+      console.error("❌ JWT_SECRET non configuré")
+      req.user = null
+      return next()
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    console.log("✅ Token optionnel décodé:", { userId: decoded.id, email: decoded.email })
+
+    // Vérifier que l'utilisateur existe toujours
+    const user = await User.findByPk(decoded.id)
+    if (!user) {
+      console.log("⚠️ Utilisateur non trouvé pour token optionnel:", decoded.id)
+      req.user = null
+      return next()
+    }
+
+    req.user = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+    }
+
+    console.log("✅ Utilisateur authentifié optionnellement:", req.user.email)
+    next()
+  } catch (error) {
+    console.log("ℹ️ Erreur authentification optionnelle (ignorée):", error.message)
+    req.user = null
     next()
   }
 }
+
+// Middleware pour vérifier les rôles
+export const requireRole = (roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentification requise",
+      })
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Permissions insuffisantes",
+      })
+    }
+
+    next()
+  }
+}
+
+// Alias pour compatibilité
+export const authorize = requireRole

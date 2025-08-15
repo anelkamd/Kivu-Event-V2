@@ -1,6 +1,7 @@
-import { Participant } from "../models/Participant.js"
-import { Event } from "../models/Event.js"
-import { User } from "../models/User.js"
+import Participant from "../models/Participant.js"
+import Event from "../models/Event.js"
+import User from "../models/User.js"
+import Venue from "../models/Venue.js"
 import { v4 as uuidv4 } from "uuid"
 
 // Inscription d'un participant à un événement
@@ -25,11 +26,37 @@ export const registerParticipant = async (req, res) => {
     }
 
     // Vérifier que l'événement existe
-    const event = await Event.findByPk(eventId)
+    const event = await Event.findByPk(eventId, {
+      include: [
+        {
+          model: Venue,
+          as: "venue",
+        },
+      ],
+    })
+
     if (!event) {
       return res.status(404).json({
         success: false,
         message: "Événement non trouvé",
+      })
+    }
+
+    console.log("✅ Événement trouvé:", event.title)
+
+    // Vérifier si l'événement est ouvert aux inscriptions
+    if (event.status !== "published") {
+      return res.status(400).json({
+        success: false,
+        message: "Les inscriptions ne sont pas ouvertes pour cet événement",
+      })
+    }
+
+    // Vérifier la date limite d'inscription
+    if (event.registrationDeadline && new Date() > new Date(event.registrationDeadline)) {
+      return res.status(400).json({
+        success: false,
+        message: "La date limite d'inscription est dépassée",
       })
     }
 
@@ -75,13 +102,14 @@ export const registerParticipant = async (req, res) => {
       specialNeeds: specialNeeds?.trim() || null,
       registrationDate: new Date(),
       status: "registered",
-      checkedIn: false,
+      attended: false,
     }
 
     const participant = await Participant.create(participantData)
 
     console.log("✅ Participant créé:", participant.id)
 
+    // Réponse de succès avec informations de l'événement
     res.status(201).json({
       success: true,
       message: "Inscription réussie",
@@ -93,6 +121,13 @@ export const registerParticipant = async (req, res) => {
           email: participant.email,
           status: participant.status,
           registrationDate: participant.registrationDate,
+        },
+        event: {
+          id: event.id,
+          title: event.title,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          venue: event.venue ? event.venue.name : null,
         },
       },
     })
@@ -111,6 +146,15 @@ export const getParticipantsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params
 
+    // Vérifier que l'événement existe
+    const event = await Event.findByPk(eventId)
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Événement non trouvé",
+      })
+    }
+
     const participants = await Participant.findAll({
       where: { eventId },
       include: [
@@ -126,13 +170,22 @@ export const getParticipantsByEvent = async (req, res) => {
 
     res.json({
       success: true,
-      data: { participants },
+      data: {
+        participants,
+        total: participants.length,
+        event: {
+          id: event.id,
+          title: event.title,
+          capacity: event.capacity,
+        },
+      },
     })
   } catch (error) {
     console.error("❌ Erreur récupération participants:", error)
     res.status(500).json({
       success: false,
       message: "Erreur lors de la récupération des participants",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     })
   }
 }
@@ -140,14 +193,20 @@ export const getParticipantsByEvent = async (req, res) => {
 // Récupérer un participant spécifique
 export const getParticipantById = async (req, res) => {
   try {
-    const { eventId, participantId } = req.params
+    const { participantId } = req.params
 
-    const participant = await Participant.findOne({
-      where: {
-        id: participantId,
-        eventId,
-      },
+    const participant = await Participant.findByPk(participantId, {
       include: [
+        {
+          model: Event,
+          as: "event",
+          include: [
+            {
+              model: Venue,
+              as: "venue",
+            },
+          ],
+        },
         {
           model: User,
           as: "user",
@@ -173,6 +232,7 @@ export const getParticipantById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Erreur lors de la récupération du participant",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     })
   }
 }
@@ -180,15 +240,10 @@ export const getParticipantById = async (req, res) => {
 // Mettre à jour un participant
 export const updateParticipant = async (req, res) => {
   try {
-    const { eventId, participantId } = req.params
+    const { participantId } = req.params
     const updateData = req.body
 
-    const participant = await Participant.findOne({
-      where: {
-        id: participantId,
-        eventId,
-      },
-    })
+    const participant = await Participant.findByPk(participantId)
 
     if (!participant) {
       return res.status(404).json({
@@ -197,18 +252,36 @@ export const updateParticipant = async (req, res) => {
       })
     }
 
+    // Mettre à jour le participant
     await participant.update(updateData)
+
+    // Récupérer le participant mis à jour avec les relations
+    const updatedParticipant = await Participant.findByPk(participantId, {
+      include: [
+        {
+          model: Event,
+          as: "event",
+        },
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "firstName", "lastName", "email"],
+          required: false,
+        },
+      ],
+    })
 
     res.json({
       success: true,
       message: "Participant mis à jour avec succès",
-      data: { participant },
+      data: { participant: updatedParticipant },
     })
   } catch (error) {
     console.error("❌ Erreur mise à jour participant:", error)
     res.status(500).json({
       success: false,
       message: "Erreur lors de la mise à jour du participant",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     })
   }
 }
@@ -216,14 +289,9 @@ export const updateParticipant = async (req, res) => {
 // Supprimer un participant
 export const deleteParticipant = async (req, res) => {
   try {
-    const { eventId, participantId } = req.params
+    const { participantId } = req.params
 
-    const participant = await Participant.findOne({
-      where: {
-        id: participantId,
-        eventId,
-      },
-    })
+    const participant = await Participant.findByPk(participantId)
 
     if (!participant) {
       return res.status(404).json({
@@ -243,6 +311,7 @@ export const deleteParticipant = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Erreur lors de la suppression du participant",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     })
   }
 }
@@ -250,14 +319,9 @@ export const deleteParticipant = async (req, res) => {
 // Check-in d'un participant
 export const checkInParticipant = async (req, res) => {
   try {
-    const { eventId, participantId } = req.params
+    const { participantId } = req.params
 
-    const participant = await Participant.findOne({
-      where: {
-        id: participantId,
-        eventId,
-      },
-    })
+    const participant = await Participant.findByPk(participantId)
 
     if (!participant) {
       return res.status(404).json({
@@ -266,21 +330,27 @@ export const checkInParticipant = async (req, res) => {
       })
     }
 
+    // Marquer comme présent
     await participant.update({
-      checkedIn: true,
+      attended: true,
       checkInTime: new Date(),
     })
 
     res.json({
       success: true,
       message: "Check-in effectué avec succès",
-      data: { participant },
+      data: {
+        participantId: participant.id,
+        attended: participant.attended,
+        checkInTime: participant.checkInTime,
+      },
     })
   } catch (error) {
     console.error("❌ Erreur check-in participant:", error)
     res.status(500).json({
       success: false,
       message: "Erreur lors du check-in",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     })
   }
 }
