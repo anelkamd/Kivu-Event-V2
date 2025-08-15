@@ -2,6 +2,7 @@ import Participant from "../models/Participant.js"
 import Event from "../models/Event.js"
 import User from "../models/User.js"
 import Venue from "../models/Venue.js"
+import EmailService from "../services/emailService.js"
 import { v4 as uuidv4 } from "uuid"
 import { Op } from "sequelize"
 
@@ -138,10 +139,21 @@ export const registerParticipant = async (req, res) => {
 
     console.log("✅ Participant créé:", participant.id)
 
+    // Envoyer l'email de confirmation avec QR code
+    try {
+      console.log("📧 Tentative d'envoi d'email de confirmation...")
+      await EmailService.sendConfirmationEmail(participant, event)
+      console.log("✅ Email de confirmation envoyé avec succès")
+    } catch (emailError) {
+      console.error("❌ Erreur lors de l'envoi de l'email:", emailError)
+      // Ne pas faire échouer l'inscription si l'email ne peut pas être envoyé
+      // L'inscription est réussie même si l'email échoue
+    }
+
     // Réponse de succès avec informations de l'événement
     res.status(201).json({
       success: true,
-      message: "Inscription réussie",
+      message: "Inscription réussie ! Un email de confirmation avec votre QR code vous a été envoyé.",
       data: {
         participant: {
           id: participant.id,
@@ -222,6 +234,124 @@ export const getParticipantsByEvent = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Erreur lors de la récupération des participants",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    })
+  }
+}
+
+// Vérifier un QR code pour le check-in
+export const verifyQRCode = async (req, res) => {
+  try {
+    const { qrData } = req.body
+
+    console.log("🔍 Vérification QR code:", qrData)
+
+    const data = JSON.parse(qrData)
+    const { participantId, eventId, checkInCode } = data
+
+    const participant = await Participant.findOne({
+      where: { id: participantId, eventId: eventId },
+      include: [
+        {
+          model: Event,
+          as: "event",
+          include: [
+            {
+              model: Venue,
+              as: "venue",
+            },
+          ],
+        },
+        {
+          model: User,
+          as: "user",
+          required: false,
+        },
+      ],
+    })
+
+    if (!participant) {
+      return res.status(404).json({
+        success: false,
+        message: "Participant non trouvé ou QR code invalide",
+      })
+    }
+
+    // Vérifier le code de check-in
+    const expectedCheckInCode = `${participantId}-${eventId}`
+    if (checkInCode !== expectedCheckInCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Code QR invalide",
+      })
+    }
+
+    res.json({
+      success: true,
+      message: "QR code valide",
+      data: {
+        participant: {
+          id: participant.id,
+          firstName: participant.firstName,
+          lastName: participant.lastName,
+          email: participant.email,
+          company: participant.company,
+          status: participant.status,
+          attended: participant.attended,
+        },
+        event: {
+          id: participant.event.id,
+          title: participant.event.title,
+          startDate: participant.event.startDate,
+          venue: participant.event.venue?.name,
+        },
+      },
+    })
+  } catch (error) {
+    console.error("❌ Erreur vérification QR code:", error)
+    res.status(400).json({
+      success: false,
+      message: "QR code invalide ou corrompu",
+    })
+  }
+}
+
+// Check-in d'un participant
+export const checkInParticipant = async (req, res) => {
+  try {
+    const { participantId } = req.params
+
+    const participant = await Participant.findByPk(participantId)
+
+    if (!participant) {
+      return res.status(404).json({
+        success: false,
+        message: "Participant non trouvé",
+      })
+    }
+
+    // Marquer comme présent
+    await participant.update({
+      attended: true,
+      checkInTime: new Date(),
+      status: "attended",
+    })
+
+    res.json({
+      success: true,
+      message: "Check-in effectué avec succès",
+      data: {
+        participantId: participant.id,
+        attended: participant.attended,
+        checkInTime: participant.checkInTime,
+        status: participant.status,
+      },
+    })
+  } catch (error) {
+    console.error("❌ Erreur check-in participant:", error)
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors du check-in",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     })
   }
@@ -348,45 +478,6 @@ export const deleteParticipant = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Erreur lors de la suppression du participant",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    })
-  }
-}
-
-// Check-in d'un participant
-export const checkInParticipant = async (req, res) => {
-  try {
-    const { participantId } = req.params
-
-    const participant = await Participant.findByPk(participantId)
-
-    if (!participant) {
-      return res.status(404).json({
-        success: false,
-        message: "Participant non trouvé",
-      })
-    }
-
-    // Marquer comme présent
-    await participant.update({
-      attended: true,
-      checkInTime: new Date(),
-    })
-
-    res.json({
-      success: true,
-      message: "Check-in effectué avec succès",
-      data: {
-        participantId: participant.id,
-        attended: participant.attended,
-        checkInTime: participant.checkInTime,
-      },
-    })
-  } catch (error) {
-    console.error("❌ Erreur check-in participant:", error)
-    res.status(500).json({
-      success: false,
-      message: "Erreur lors du check-in",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     })
   }

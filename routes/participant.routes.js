@@ -6,19 +6,21 @@ import {
   updateParticipant,
   deleteParticipant,
   checkInParticipant,
+  verifyQRCode,
 } from "../controllers/participant.controller.js"
-import { protect, optionalAuth } from "../middleware/auth.middleware.js"
+import { optionalAuth, protect } from "../middleware/auth.middleware.js"
 
 const router = express.Router()
 
-// Routes publiques (inscription anonyme)
+// Routes publiques (inscription anonyme autorisée)
 router.post("/:eventId/register", optionalAuth, registerParticipant)
+router.post("/verify-qr", verifyQRCode)
 
-// Routes protégées (gestion des participants)
-router.get("/:eventId", protect, getParticipantsByEvent)
-router.get("/:eventId/:participantId", protect, getParticipantById)
-router.put("/:eventId/:participantId", protect, updateParticipant)
-router.delete("/:eventId/:participantId", protect, deleteParticipant)
-router.post("/:eventId/:participantId/checkin", protect, checkInParticipant)
+// Routes protégées (authentification requise)
+router.get("/event/:eventId", protect, getParticipantsByEvent)
+router.get("/:participantId", protect, getParticipantById)
+router.put("/:participantId", protect, updateParticipant)
+router.delete("/:participantId", protect, deleteParticipant)
+router.post("/:participantId/checkin", protect, checkInParticipant)
 
 export default router
