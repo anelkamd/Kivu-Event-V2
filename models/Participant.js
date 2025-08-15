@@ -1,94 +1,127 @@
 import { DataTypes } from "sequelize"
 import { sequelize } from "../config/database.js"
-// Importez les modèles pour les références, mais les associations seront définies dans index.js
-import User from "./User.js"
-import Event from "./Event.js"
 
 const Participant = sequelize.define(
   "Participant",
   {
     id: {
-      type: DataTypes.UUID, // Changé de STRING à UUID
+      type: DataTypes.STRING,
       primaryKey: true,
-      defaultValue: DataTypes.UUIDV4, // Changé de uuidv4() à DataTypes.UUIDV4
-    },
-    userId: {
-      type: DataTypes.UUID, // Changé de STRING à UUID
       allowNull: false,
-      field: "user_id",
-      references: {
-        model: User, // Référence directe au modèle User
-        key: "id",
-      },
     },
     eventId: {
-      type: DataTypes.UUID, // Changé de STRING à UUID
+      type: DataTypes.STRING,
       allowNull: false,
       field: "event_id",
       references: {
-        model: Event, // Référence directe au modèle Event
+        model: "events",
         key: "id",
       },
     },
-    registrationDate: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      allowNull: false, // Ajouté explicitement
-      field: "registration_date",
+    userId: {
+      type: DataTypes.STRING,
+      allowNull: true, // IMPORTANT: Permet l'inscription anonyme
+      field: "user_id",
+      references: {
+        model: "users",
+        key: "id",
+      },
     },
-    status: {
-      type: DataTypes.ENUM("registered", "attended", "cancelled", "no-show"),
-      defaultValue: "registered",
-      allowNull: false, // Ajouté explicitement
+    // Informations personnelles (pour inscription anonyme)
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: "first_name",
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: "last_name",
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        isEmail: true,
+      },
+    },
+    phone: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     company: {
-      type: DataTypes.STRING(100), // Ajouté une longueur
-      allowNull: true, // Ajouté explicitement
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     jobTitle: {
-      type: DataTypes.STRING(100), // Ajouté une longueur
-      allowNull: true, // Ajouté explicitement
+      type: DataTypes.STRING,
+      allowNull: true,
       field: "job_title",
     },
+    // Informations spéciales
     dietaryRestrictions: {
-      type: DataTypes.STRING(255), // Ajouté une longueur
-      allowNull: true, // Ajouté explicitement
+      type: DataTypes.TEXT,
+      allowNull: true,
       field: "dietary_restrictions",
     },
     specialRequirements: {
       type: DataTypes.TEXT,
-      allowNull: true, // Ajouté explicitement
+      allowNull: true,
       field: "special_requirements",
     },
+    // Statut et dates
+    status: {
+      type: DataTypes.ENUM("registered", "confirmed", "attended", "cancelled"),
+      defaultValue: "registered",
+      allowNull: false,
+    },
+    registrationDate: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      allowNull: false,
+      field: "registration_date",
+    },
+    attended: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
+    checkInTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: "check_in_time",
+    },
+    // Feedback
     feedbackRating: {
       type: DataTypes.INTEGER,
-      allowNull: true, // Ajouté explicitement
+      allowNull: true,
       field: "feedback_rating",
       validate: {
-        min: { args: [1], msg: "La note minimale est 1" },
-        max: { args: [5], msg: "La note maximale est 5" },
+        min: 1,
+        max: 5,
       },
     },
     feedbackComment: {
       type: DataTypes.TEXT,
-      allowNull: true, // Ajouté explicitement
+      allowNull: true,
       field: "feedback_comment",
     },
     feedbackSubmittedAt: {
       type: DataTypes.DATE,
-      allowNull: true, // Ajouté explicitement
+      allowNull: true,
       field: "feedback_submitted_at",
     },
+    // Métadonnées
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
-      allowNull: false, // Ajouté explicitement
+      allowNull: false,
       field: "created_at",
     },
     updatedAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
-      allowNull: false, // Ajouté explicitement
+      allowNull: false,
       field: "updated_at",
     },
   },
@@ -99,12 +132,23 @@ const Participant = sequelize.define(
     indexes: [
       {
         unique: true,
-        fields: ["user_id", "event_id"], // Utilise les noms de colonnes de la DB
+        fields: ["event_id", "email"], // Un email par événement
+        name: "unique_event_email",
+      },
+      {
+        fields: ["event_id"],
+        name: "idx_participants_event_id",
+      },
+      {
+        fields: ["user_id"],
+        name: "idx_participants_user_id",
+      },
+      {
+        fields: ["status"],
+        name: "idx_participants_status",
       },
     ],
   },
 )
-
-// IMPORTANT: Les associations sont maintenant définies dans models/index.js
 
 export default Participant

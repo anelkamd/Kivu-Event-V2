@@ -3,6 +3,7 @@ import Event from "../models/Event.js"
 import User from "../models/User.js"
 import Venue from "../models/Venue.js"
 import { v4 as uuidv4 } from "uuid"
+import { Op } from "sequelize"
 
 // Inscription d'un participant à un événement
 export const registerParticipant = async (req, res) => {
@@ -19,9 +20,20 @@ export const registerParticipant = async (req, res) => {
 
     // Validation des données requises
     if (!firstName || !lastName || !email) {
+      console.log("❌ Données manquantes:", { firstName, lastName, email })
       return res.status(400).json({
         success: false,
         message: "Les champs prénom, nom et email sont obligatoires",
+      })
+    }
+
+    // Validation de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      console.log("❌ Email invalide:", email)
+      return res.status(400).json({
+        success: false,
+        message: "Format d'email invalide",
       })
     }
 
@@ -32,10 +44,16 @@ export const registerParticipant = async (req, res) => {
           model: Venue,
           as: "venue",
         },
+        {
+          model: User,
+          as: "organizer",
+          attributes: ["id", "firstName", "lastName", "email"],
+        },
       ],
     })
 
     if (!event) {
+      console.log("❌ Événement non trouvé:", eventId)
       return res.status(404).json({
         success: false,
         message: "Événement non trouvé",
@@ -46,6 +64,7 @@ export const registerParticipant = async (req, res) => {
 
     // Vérifier si l'événement est ouvert aux inscriptions
     if (event.status !== "published") {
+      console.log("❌ Événement non publié:", event.status)
       return res.status(400).json({
         success: false,
         message: "Les inscriptions ne sont pas ouvertes pour cet événement",
@@ -54,6 +73,7 @@ export const registerParticipant = async (req, res) => {
 
     // Vérifier la date limite d'inscription
     if (event.registrationDeadline && new Date() > new Date(event.registrationDeadline)) {
+      console.log("❌ Date limite dépassée:", event.registrationDeadline)
       return res.status(400).json({
         success: false,
         message: "La date limite d'inscription est dépassée",
@@ -62,10 +82,16 @@ export const registerParticipant = async (req, res) => {
 
     // Vérifier si l'événement a encore de la place
     const currentParticipants = await Participant.count({
-      where: { eventId },
+      where: {
+        eventId,
+        status: {
+          [Op.ne]: "cancelled",
+        },
+      },
     })
 
     if (event.capacity && currentParticipants >= event.capacity) {
+      console.log("❌ Événement complet:", { currentParticipants, capacity: event.capacity })
       return res.status(400).json({
         success: false,
         message: "L'événement est complet",
@@ -81,6 +107,7 @@ export const registerParticipant = async (req, res) => {
     })
 
     if (existingParticipant) {
+      console.log("❌ Participant déjà inscrit:", email)
       return res.status(400).json({
         success: false,
         message: "Vous êtes déjà inscrit à cet événement",
@@ -91,19 +118,21 @@ export const registerParticipant = async (req, res) => {
     const participantData = {
       id: uuidv4(),
       eventId,
-      userId: req.user?.id || null, // Optionnel si utilisateur connecté
+      userId: req.user?.id || null, // NULL pour inscription anonyme
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       email: email.toLowerCase().trim(),
       phone: phone?.trim() || null,
       company: company?.trim() || null,
-      position: position?.trim() || null,
+      jobTitle: position?.trim() || null, // position → jobTitle
       dietaryRestrictions: dietaryRestrictions?.trim() || null,
-      specialNeeds: specialNeeds?.trim() || null,
+      specialRequirements: specialNeeds?.trim() || null, // specialNeeds → specialRequirements
       registrationDate: new Date(),
       status: "registered",
       attended: false,
     }
+
+    console.log("📝 Données participant à créer:", participantData)
 
     const participant = await Participant.create(participantData)
 
@@ -133,10 +162,18 @@ export const registerParticipant = async (req, res) => {
     })
   } catch (error) {
     console.error("❌ Erreur inscription participant:", error)
+    console.error("❌ Stack trace:", error.stack)
+
     res.status(500).json({
       success: false,
       message: "Erreur lors de l'inscription",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      error:
+        process.env.NODE_ENV === "development"
+          ? {
+              message: error.message,
+              stack: error.stack,
+            }
+          : undefined,
     })
   }
 }
