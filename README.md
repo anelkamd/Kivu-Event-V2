@@ -131,7 +131,7 @@ Ce projet est sous licence MIT. Voir le fichier LICENSE pour plus de détails.
 
 ## 📞 Contact
 - Email: anelkamd@gmail.com
-- Site Web: https://kivu-event.com
+- Site Web: https://kivuevent.com
 
 ## 🙏 Remerciements
 Un grand merci à tous les contributeurs qui ont rendu ce projet possible.
@@ -151,15 +151,15 @@ Pour plus d'informations techniques, consultez notre documentation API.
 
 ### 1. Cloner le projet
 ```bash
-git clone https://github.com/votre-username/kivu-event.git
+git clone https://github.com/anelkamd/kivu-event.git
 cd kivu-event
 ```
 
 ### 2. Installation des dépendances
 ```bash
-npm install
+npm install --force
 # ou avec yarn
-yarn install
+yarn install --force
 ```
 
 ### 3. Configuration de la base de données
@@ -262,7 +262,7 @@ location /uploads {
 
 ```bash
 npm run dev          # Lance le serveur de développement Next.js
-npm run server      # Lance le serveur Express
+node server.js      # Lance le serveur Express
 npm run build       # Build l'application Next.js
 npm run start       # Lance l'application en production
 npm run lint        # Vérifie le code avec ESLint
