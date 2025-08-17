@@ -76,7 +76,7 @@ export default function AboutPage() {
                             >
                                 <div className="aspect-video bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden relative">
                                     <Image
-                                        src="/placeholder.svg?height=400&width=600"
+                                        src="/coverKE.PNG"
                                         alt="L'équipe Kivu Event"
                                         width={600}
                                         height={400}
