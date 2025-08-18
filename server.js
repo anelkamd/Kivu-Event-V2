@@ -79,7 +79,7 @@ app.use(
         callback(null, true)
       } else {
         console.log(`❌ Origine CORS refusée: ${origin}`)
-        callback(null, true) // Temporairement permissif pour le développement
+        callback(null, true) 
       }
     },
     credentials: true,
