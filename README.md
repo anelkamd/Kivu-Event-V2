@@ -52,26 +52,6 @@ Kivu Event est une plateforme web complète de gestion d'événements conçue po
 - JSON Web Tokens (JWT)
 - Bcrypt pour la sécurité
 
-## 💻 Installation
-
-```bash
-# Cloner le repository
-git clone https://github.com/votre-username/kivu-event.git
-
-# Installer les dépendances
-cd kivu-event
-npm install
-
-# Configurer les variables d'environnement
-cp .env.example .env
-# Modifier les variables dans .env selon votre configuration
-
-# Créer la base de données
-mysql -u root -p < database/schema.sql
-
-# Lancer le serveur de développement
-npm run dev
-```
 
 ## 🗄️ Structure du projet
 
@@ -123,20 +103,6 @@ SMTP_PASSWORD=your_password
 - `PUT /api/events/:id` - Modifier un événement
 - `DELETE /api/events/:id` - Supprimer un événement
 
-## 👥 Contribution
-Les contributions sont les bienvenues ! Consultez nos guidelines de contribution pour plus d'informations.
-
-## 📄 Licence
-Ce projet est sous licence MIT. Voir le fichier LICENSE pour plus de détails.
-
-## 📞 Contact
-- Email: anelkamd@gmail.com
-- Site Web: https://kivuevent.com
-
-## 🙏 Remerciements
-Un grand merci à tous les contributeurs qui ont rendu ce projet possible.
-
----
 
 Pour plus d'informations techniques, consultez notre documentation API.
 
@@ -145,7 +111,7 @@ Pour plus d'informations techniques, consultez notre documentation API.
 ## 🚀 Installation en local
 
 ### Prérequis
-- Node.js (v18 ou supérieur)
+- Node.js (v22 ou supérieur)
 - MySQL (v8.0 ou supérieur)
 - Git
 
@@ -218,7 +184,7 @@ MAX_FILE_SIZE=5242880  # 5MB
 1. Backend (Express) :
 ```bash
 # Terminal 1
-npm run server
+node server.js
 # L'API sera disponible sur http://localhost:5000
 ```
 
@@ -307,6 +273,18 @@ sudo lsof -i :5000  # Vérifier si le port 5000 est utilisé
 ```bash
 sudo chown -R $USER:$USER public/uploads
 sudo chmod 755 public/uploads
+
+# Commande sous Linux !
 ```
 
-Pour plus d'aide, consultez la documentation complète ou ouvrez une issue sur GitHub.
+## 👥 Contribution
+Les contributions sont les bienvenues ! Consultez nos guidelines de contribution pour plus d'informations.
+
+## 📄 Licence
+Ce projet est sous licence MIT. Voir le fichier LICENSE pour plus de détails.
+
+## 📞 Contact
+- Email: anelkadevs@gmail.com
+- Site Web: https://kivuevent.com
+
+---
