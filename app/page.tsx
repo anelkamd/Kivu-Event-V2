@@ -9,6 +9,7 @@ import { Footer } from "@/components/layout/Footer"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Calendar, Check, Users, ChevronRight, ExternalLink } from "lucide-react"
 import cover from "@/public/images/illustration1.png"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 
 export default function LandingPage() {
@@ -350,6 +351,7 @@ export default function LandingPage() {
                 {
                   name: "Baraka Espoir",
                   position: "Developpeur Web, ISIG Goma",
+                  image: "/avatar/avatar1.png",
                   quote:
                       "Kivu Event a révolutionné notre façon d'organiser des événements professionnels. Tout est devenu plus simple et plus efficace.",
                   delay: 0.2,
@@ -357,6 +359,7 @@ export default function LandingPage() {
                 {
                   name: "Josias Kabambi",
                   position: "Manager, G-SoluTech",
+                  image: "/avatar/avatar2.png",
                   quote:
                       "La gestion des participants et le suivi des performances nous ont permis d'améliorer considérablement nos séminaires d'entreprise.",
                   delay: 0.4,
@@ -364,6 +367,7 @@ export default function LandingPage() {
                 {
                   name: "Greg Banza",
                   position: "CEO, StartupLab",
+                  image: "/avatar/avatar3.png",
                   quote:
                       "Une solution complète qui nous fait gagner un temps précieux. L'interface est intuitive et les fonctionnalités sont nombreuses.",
                   delay: 0.6,
@@ -381,8 +385,19 @@ export default function LandingPage() {
                       <p className="text-gray-700 dark:text-gray-300 italic">"{testimonial.quote}"</p>
                     </div>
                     <div className="mt-6 flex items-center">
-                      <div className="w-10 h-10 rounded-full bg-black/10 dark:bg-white/10"></div>
+                      <div className="w-10 h-10 rounded-full ">
+                      <Avatar className="h-12 w-12 mr-4">
+                          <AvatarImage src={testimonial.image || "/placeholder.svg"} alt={testimonial.name} />
+                            <AvatarFallback>
+                              {testimonial.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
                       <div className="ml-3">
+                        
                         <p className="font-medium">{testimonial.name}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">{testimonial.position}</p>
                       </div>
