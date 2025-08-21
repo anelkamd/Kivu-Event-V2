@@ -171,7 +171,7 @@ export default function AboutPage() {
                                 <div className="flex flex-col md:flex-row items-center gap-8">
                                     <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex-shrink-0">
                                         <Image
-                                            src="/profil.JPG"
+                                            src="/profil.png"
                                             alt="Anelka MD"
                                             width={128}
                                             height={128}
