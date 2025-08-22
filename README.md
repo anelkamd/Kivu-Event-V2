@@ -223,6 +223,14 @@ location /uploads {
     try_files $uri $uri/ =404;
 }
 ````
+### Lancer les tests
+```bash
+npm test
+
+nmp run test:watch
+
+npm run test:coverage
+```
 
 ## 🛠 Scripts disponibles
 
