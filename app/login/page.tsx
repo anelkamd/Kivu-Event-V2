@@ -37,7 +37,7 @@ export default function Login() {
     setError("")
     try {
       await login(data.email, data.password)
-      router.push("/dashboard/events")
+      router.push("/dashboard")
     } catch (error: any) {
       console.error("Login error:", error)
       setError(error?.response?.data?.error || "Erreur de connexion")
