@@ -290,7 +290,7 @@ export default function Register() {
               </form>
               <div className="relative hidden bg-muted md:block">
                 <img
-                  src="/placeholder.svg?height=600&width=400&text=Rejoignez+Kivu+Event"
+                  src="/coverlogin.jpg"
                   alt="Rejoignez Kivu Event"
                   className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
                 />

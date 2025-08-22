@@ -213,7 +213,7 @@ export default function Login() {
               </form>
               <div className="relative hidden bg-muted md:block">
                 <img
-                  src="/placeholder.svg?height=600&width=400&text=Kivu+Event+Platform"
+                  src="/coverlogin.jpg"
                   alt="Kivu Event Platform"
                   className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
                 />
