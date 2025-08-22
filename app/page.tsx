@@ -349,7 +349,7 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
                 {
-                  name: "Baraka Espoir",
+                  name: "Espoir Baraka",
                   position: "Developpeur Web, ISIG Goma",
                   image: "/avatar/avatar1.png",
                   quote:
