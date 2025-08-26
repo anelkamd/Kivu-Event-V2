@@ -106,7 +106,13 @@ export default function ModeratorDashboard() {
       setDashboardData(response.data.data)
     } catch (error) {
       console.error("Erreur lors du chargement du dashboard:", error)
-      if (error.response?.status === 401) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof (error as any).response?.status === "number" &&
+        (error as any).response.status === 401
+      ) {
         localStorage.removeItem("moderator_token")
         router.push("/moderator/login")
       }
