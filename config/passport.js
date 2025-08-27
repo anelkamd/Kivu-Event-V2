@@ -3,12 +3,12 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20"
 import { sequelize } from "../config/database.js"
 import { QueryTypes } from "sequelize"
 
-// Serialize user for the session
+// Serialize user
 passport.serializeUser((user, done) => {
   done(null, user.id)
 })
 
-// Deserialize user from the session
+// Deserialize user
 passport.deserializeUser(async (id, done) => {
   try {
     const users = await sequelize.query(
@@ -19,17 +19,16 @@ passport.deserializeUser(async (id, done) => {
       }
     )
 
-    if (!users || users.length === 0) {
+    if (users.length === 0) {
       return done(new Error("User not found"))
     }
-
     done(null, users[0])
   } catch (error) {
     done(error)
   }
 })
 
-// Google OAuth strategy for moderators
+// Google OAuth strategy
 passport.use(
   "google-moderator",
   new GoogleStrategy(
@@ -41,9 +40,9 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        // Vérifier si l'utilisateur existe déjà
+        // Vérifie si modérateur existe déjà
         const users = await sequelize.query(
-          "SELECT * FROM users WHERE email = ? AND role = 'moderator'",
+          "SELECT * FROM moderators WHERE email = ?",
           {
             replacements: [profile.emails[0].value],
             type: QueryTypes.SELECT,
@@ -54,45 +53,32 @@ passport.use(
           return done(null, users[0])
         }
 
-        // Sinon, créer un nouveau modérateur
+        // Sinon créer le modérateur
         await sequelize.query(
-          `INSERT INTO users (
-            id, 
-            first_name, 
-            last_name, 
-            email, 
-            password, 
-            role, 
-            profile_image
-          ) VALUES (
-            UUID(), 
-            ?, 
-            ?, 
-            ?, 
-            '', 
-            'moderator',
-            ?
-          )`,
+          `INSERT INTO moderators (
+            id, first_name, last_name, email, google_id, profile_image, is_active
+          ) VALUES (UUID(), ?, ?, ?, ?, ?, true)`,
           {
             replacements: [
               profile.name.givenName,
               profile.name.familyName,
               profile.emails[0].value,
+              profile.id,
               profile.photos[0]?.value || null,
             ],
+            type: QueryTypes.INSERT,
           }
         )
 
-        // Récupérer le nouvel utilisateur
-        const newUser = await sequelize.query(
-          "SELECT * FROM users WHERE email = ?",
+        const [newUser] = await sequelize.query(
+          "SELECT * FROM moderators WHERE email = ?",
           {
             replacements: [profile.emails[0].value],
             type: QueryTypes.SELECT,
           }
         )
 
-        return done(null, newUser[0])
+        return done(null, newUser)
       } catch (error) {
         return done(error)
       }
