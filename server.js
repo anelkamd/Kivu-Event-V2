@@ -8,6 +8,9 @@ import colors from "colors"
 import path from "path"
 import { fileURLToPath } from "url"
 
+// Configurer Passport
+import passport from "./config/passport.js"
+
 // Routes
 import eventRoutes from "./routes/event.routes.js"
 import authRoutes from "./routes/auth.routes.js"
@@ -220,6 +223,9 @@ process.on("SIGINT", () => {
   console.log(colors.yellow("SIGINT reçu, arrêt du serveur..."))
   process.exit(0)
 })
+
+// Assurez-vous que passport est initialisé AVANT les routes
+app.use(passport.initialize())
 
 startServer()
 export default app

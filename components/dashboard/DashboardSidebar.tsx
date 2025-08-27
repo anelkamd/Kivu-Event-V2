@@ -3,7 +3,23 @@
 import { useAuth } from "@/context/AuthContext"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Inbox, Calendar, Users, Settings, LogOut, Search, MapPin, User, Moon, Sun } from 'lucide-react'
+import { 
+  LayoutDashboard, 
+  Inbox, 
+  Calendar, 
+  Users, 
+  Settings, 
+  LogOut, 
+  Search, 
+  MapPin, 
+  User, 
+  Moon, 
+  Sun,
+  CheckSquare,
+  Package,
+  Shield,
+  BarChart
+} from 'lucide-react'
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,11 +42,35 @@ export function Sidebar() {
       icon: Inbox,
     },
     {
+      name: "Événements",
+      href: "/dashboard/events",
+      icon: Calendar,
+    },
+    {
       name: "Participants",
       href: "/dashboard/participants",
       icon: Users,
     },
-    
+    {
+      name: "Lieux",
+      href: "/dashboard/venues",
+      icon: MapPin,
+    },
+    {
+      name: "Tâches",
+      href: "/dashboard/tasks",
+      icon: CheckSquare,
+    },
+    {
+      name: "Ressources",
+      href: "/dashboard/resources",
+      icon: Package,
+    },
+    {
+      name: "Modérateurs",
+      href: "/dashboard/moderators",
+      icon: Shield,
+    },
   ]
 
   const settingsItems = [
@@ -38,6 +78,16 @@ export function Sidebar() {
       name: "Mon profil",
       href: "/dashboard/profile",
       icon: User,
+    },
+    {
+      name: "Paramètres",
+      href: "/dashboard/settings",
+      icon: Settings,
+    },
+    {
+      name: "Rapports",
+      href: "/dashboard/reports",
+      icon: BarChart,
     },
   ]
 

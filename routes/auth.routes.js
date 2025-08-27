@@ -1,5 +1,6 @@
 import express from "express"
-import passport from "../config/passport.js"
+import passport from "passport"
+import jwt from "jsonwebtoken"
 import {
   register,
   login,
@@ -14,6 +15,33 @@ import {
 import { protect } from "../middleware/auth.middleware.js"
 
 const router = express.Router()
+
+// Route Google OAuth standard
+router.get("/google", passport.authenticate("google", {
+  scope: ["profile", "email"]
+}))
+
+// Route de callback Google
+router.get("/google/callback", 
+  passport.authenticate("google", { 
+    failureRedirect: "/login?error=google_auth_failed",
+    session: false 
+  }),
+  (req, res) => {
+    const token = jwt.sign(
+      { 
+        id: req.user.id,
+        email: req.user.email,
+        role: req.user.role 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRATION }
+    )
+
+    // Redirection vers le frontend avec le token
+    res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`)
+  }
+)
 
 // Routes d'authentification publiques
 router.post("/register", register)

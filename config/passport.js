@@ -1,108 +1,103 @@
 import passport from "passport"
 import { Strategy as GoogleStrategy } from "passport-google-oauth20"
-import Moderator from "../models/Moderator.js"
+import { sequelize } from "../config/database.js"
+import { QueryTypes } from "sequelize"
 
-// Configuration Google OAuth pour les modérateurs
+// Serialize user for the session
+passport.serializeUser((user, done) => {
+  done(null, user.id)
+})
+
+// Deserialize user from the session
+passport.deserializeUser(async (id, done) => {
+  try {
+    const users = await sequelize.query(
+      "SELECT * FROM users WHERE id = ?",
+      {
+        replacements: [id],
+        type: QueryTypes.SELECT,
+      }
+    )
+
+    if (!users || users.length === 0) {
+      return done(new Error("User not found"))
+    }
+
+    done(null, users[0])
+  } catch (error) {
+    done(error)
+  }
+})
+
+// Google OAuth strategy for moderators
 passport.use(
   "google-moderator",
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      callbackURL: "/api/auth/moderator/google/callback",
+      scope: ["profile", "email"],
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        console.log("Google OAuth Profile:", profile)
-
-        // Chercher un modérateur existant avec cet email ou Google ID
-        const moderator = await Moderator.findOne({
-          where: {
-            $or: [{ googleId: profile.id }, { email: profile.emails[0].value }],
-          },
-        })
-
-        if (moderator) {
-          // Mettre à jour les informations si nécessaire
-          if (!moderator.googleId) {
-            moderator.googleId = profile.id
+        // Vérifier si l'utilisateur existe déjà
+        const users = await sequelize.query(
+          "SELECT * FROM users WHERE email = ? AND role = 'moderator'",
+          {
+            replacements: [profile.emails[0].value],
+            type: QueryTypes.SELECT,
           }
-          if (!moderator.firstName && profile.name?.givenName) {
-            moderator.firstName = profile.name.givenName
-          }
-          if (!moderator.lastName && profile.name?.familyName) {
-            moderator.lastName = profile.name.familyName
-          }
-          if (!moderator.profileImage && profile.photos?.[0]?.value) {
-            moderator.profileImage = profile.photos[0].value
-          }
+        )
 
-          moderator.lastLogin = new Date()
-          await moderator.save()
-
-          console.log("Modérateur existant connecté:", moderator.email)
-          return done(null, moderator)
-        } else {
-          // Vérifier si c'est une invitation en attente
-          const pendingInvitation = await Moderator.findOne({
-            where: {
-              email: profile.emails[0].value,
-              invitationToken: { $ne: null },
-              invitationExpiresAt: { $gt: new Date() },
-            },
-          })
-
-          if (pendingInvitation) {
-            // Activer le compte du modérateur
-            pendingInvitation.googleId = profile.id
-            pendingInvitation.firstName = profile.name?.givenName || pendingInvitation.firstName
-            pendingInvitation.lastName = profile.name?.familyName || pendingInvitation.lastName
-            pendingInvitation.profileImage = profile.photos?.[0]?.value || pendingInvitation.profileImage
-            pendingInvitation.activatedAt = new Date()
-            pendingInvitation.lastLogin = new Date()
-            pendingInvitation.invitationToken = null
-            pendingInvitation.invitationExpiresAt = null
-            pendingInvitation.isActive = true
-
-            await pendingInvitation.save()
-
-            console.log("Modérateur activé via invitation:", pendingInvitation.email)
-            return done(null, pendingInvitation)
-          } else {
-            // Pas d'invitation trouvée
-            console.log("Aucune invitation trouvée pour:", profile.emails[0].value)
-            return done(null, false, { message: "Aucune invitation trouvée pour cet email" })
-          }
+        if (users.length > 0) {
+          return done(null, users[0])
         }
+
+        // Sinon, créer un nouveau modérateur
+        await sequelize.query(
+          `INSERT INTO users (
+            id, 
+            first_name, 
+            last_name, 
+            email, 
+            password, 
+            role, 
+            profile_image
+          ) VALUES (
+            UUID(), 
+            ?, 
+            ?, 
+            ?, 
+            '', 
+            'moderator',
+            ?
+          )`,
+          {
+            replacements: [
+              profile.name.givenName,
+              profile.name.familyName,
+              profile.emails[0].value,
+              profile.photos[0]?.value || null,
+            ],
+          }
+        )
+
+        // Récupérer le nouvel utilisateur
+        const newUser = await sequelize.query(
+          "SELECT * FROM users WHERE email = ?",
+          {
+            replacements: [profile.emails[0].value],
+            type: QueryTypes.SELECT,
+          }
+        )
+
+        return done(null, newUser[0])
       } catch (error) {
-        console.error("Erreur lors de l'authentification Google:", error)
-        return done(error, null)
+        return done(error)
       }
-    },
-  ),
-)
-
-// Sérialisation pour les sessions
-passport.serializeUser((user, done) => {
-  if (user.constructor.name === "Moderator") {
-    done(null, { type: "moderator", id: user.id })
-  } else {
-    done(null, { type: "user", id: user.id })
-  }
-})
-
-passport.deserializeUser(async (obj, done) => {
-  try {
-    if (obj.type === "moderator") {
-      const moderator = await Moderator.findByPk(obj.id)
-      done(null, moderator)
-    } else {
-      // Pour les utilisateurs normaux si nécessaire
-      done(null, null)
     }
-  } catch (error) {
-    done(error, null)
-  }
-})
+  )
+)
 
 export default passport

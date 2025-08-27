@@ -31,7 +31,8 @@ export default function ModeratorLogin() {
   }, [searchParams])
 
   const handleGoogleLogin = () => {
-    window.location.href = "/api/auth/moderator/google"
+    // Rediriger vers le backend
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/moderator/google`
   }
 
   return (
