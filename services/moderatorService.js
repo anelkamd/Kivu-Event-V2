@@ -4,6 +4,8 @@ import Event from "../models/Event.js"
 import emailService from "./emailService.js"
 import { v4 as uuidv4 } from "uuid"
 import { Op } from "sequelize"
+import crypto from "crypto"
+import pool from "../config/database.js"
 
 class ModeratorService {
   // Inviter un modérateur
@@ -288,6 +290,24 @@ class ModeratorService {
       console.error("Erreur lors de la révocation du modérateur:", error)
       throw error
     }
+  }
+
+  // Nouvelle méthode invite
+  async invite(email, eventId, organizer) {
+    // Génère un token d’invitation
+    const token = crypto.randomBytes(32).toString("hex")
+    // Stocke l’invitation en base
+    await pool.query(
+      "INSERT INTO moderator_invitations (email, event_id, token, status, expires_at) VALUES (?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL 2 DAY))",
+      [email, eventId, token]
+    )
+    // Envoie l’email
+    await emailService.transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: "Invitation à modérer un événement",
+      html: `<p>Vous êtes invité à modérer l'événement. Cliquez ici pour accepter : <a href="${process.env.FRONTEND_URL}/moderator/activate?token=${token}&event=${eventId}">Accepter l'invitation</a></p>`,
+    })
   }
 }
 

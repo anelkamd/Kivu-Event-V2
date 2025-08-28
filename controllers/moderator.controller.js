@@ -8,23 +8,13 @@ import { Op } from "sequelize"
 // Inviter un modérateur
 export const inviteModerator = async (req, res) => {
   try {
-    const organizerId = req.user.id
-    const { eventId } = req.params
-    const moderatorData = req.body
-
-    const result = await moderatorService.inviteModerator(organizerId, eventId, moderatorData)
-
-    res.status(201).json({
-      success: true,
-      message: "Modérateur invité avec succès",
-      data: result,
-    })
+    const { email, eventId } = req.body
+    // Vérifie que l'utilisateur est bien organisateur de l'événement
+    // (à adapter selon ta logique)
+    await moderatorService.invite(email, eventId, req.user)
+    res.json({ success: true, message: "Invitation envoyée !" })
   } catch (error) {
-    console.error("Erreur lors de l'invitation du modérateur:", error)
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    })
+    res.status(400).json({ success: false, error: error.message })
   }
 }
 

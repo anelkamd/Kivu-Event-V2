@@ -16,6 +16,7 @@ const router = express.Router()
 router.post("/events/:eventId/invite", protect, requireRole(["organizer", "admin"]), inviteModerator)
 router.get("/events/:eventId", protect, getEventModerators)
 router.delete("/events/:eventId/:moderatorId", protect, requireRole(["organizer", "admin"]), revokeModerator)
+router.post("/invite", protect, requireRole(["organizer"]), inviteModerator)
 
 // Routes pour les modérateurs (nécessitent une authentification spéciale)
 router.get("/dashboard", protect, requireRole(["moderator"]), getModeratorDashboard)
