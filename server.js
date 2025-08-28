@@ -22,6 +22,8 @@ import userRoutes from "./routes/user.routes.js"
 import uploadRoutes from "./routes/uploadRoutes.js"
 import contactRoutes from "./routes/contact.routes.js"
 import adminRoutes from "./routes/admin.js"
+import moderatorRoutes from "./routes/moderator.routes.js"
+import tasksRoutes from "./routes/tasks.routes.js"
 
 // Middlewares
 import { errorHandler } from "./middleware/error.middleware.js"
@@ -133,6 +135,8 @@ app.use("/api/users", userRoutes)
 app.use("/api", uploadRoutes)
 app.use("/api/contact", contactRoutes)
 app.use("/api/admin", adminRoutes)
+app.use("/api/moderator", moderatorRoutes)
+app.use("/api/tasks", tasksRoutes)
 
 // ==============================
 // Route de santé
