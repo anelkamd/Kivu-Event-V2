@@ -49,6 +49,7 @@ const upload = multer({
 router.get("/public", getPublicEvents) // Événements publics
 router.get("/my/events", protect, getMyEvents) // Mes événements
 router.get("/my/participations", protect, getMyParticipations) // Mes participations
+router.get("/my-events", protect, getMyEvents)
 
 // Routes avec paramètres (doivent être APRÈS les routes spécifiques)
 router.get("/:id", optionalAuth, getEventById) // Détails d'un événement (avec auth optionnelle)
