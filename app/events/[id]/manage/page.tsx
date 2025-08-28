@@ -2,8 +2,7 @@
 
 import { useState, useEffect, use } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button, Input } from "@/components/ui"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -782,6 +781,35 @@ export default function EventManage({ params }: EventManageProps) {
           </TabsContent>
         </Tabs>
       </div>
+    </div>
+  )
+}
+
+import { useState } from "react"
+import { Button, Input } from "@/components/ui"
+
+export function InviteModeratorForm({ eventId }) {
+  const [email, setEmail] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+
+  const handleInvite = async () => {
+    setLoading(true)
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/moderator/invite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` },
+      body: JSON.stringify({ email, eventId }),
+    })
+    const data = await res.json()
+    setLoading(false)
+    setSuccess(data.success)
+  }
+
+  return (
+    <div>
+      <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email du modérateur" />
+      <Button onClick={handleInvite} disabled={loading || !email}>Inviter</Button>
+      {success && <p className="text-green-600">Invitation envoyée !</p>}
     </div>
   )
 }
