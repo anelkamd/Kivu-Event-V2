@@ -18,7 +18,8 @@ const router = express.Router()
 
 // Route Google OAuth standard
 router.get("/google", passport.authenticate("google", {
-  scope: ["profile", "email"]
+  scope: ["profile", "email"],
+  session: false
 }))
 
 // Route de callback Google
@@ -59,17 +60,16 @@ router.put("/updatedetails", protect, updateDetails)
 router.put("/updatepassword", protect, updatePassword)
 
 // Routes d'authentification Google pour modérateurs
-router.get("/moderator/google", passport.authenticate("google-moderator", { scope: ["profile", "email"] }))
+router.get("/moderator/google", passport.authenticate("google-moderator", { scope: ["profile", "email"], session: false }))
 
 router.get(
   "/moderator/google/callback",
-  passport.authenticate("google-moderator", { failureRedirect: "/moderator/login?error=auth_failed" }),
+  passport.authenticate("google-moderator", { failureRedirect: "/moderator/login?error=auth_failed", session: false }),
   (req, res) => {
     // Succès de l'authentification
     const moderator = req.user
 
     // Générer un token JWT pour le modérateur
-    const jwt = require("jsonwebtoken")
     const token = jwt.sign(
       {
         id: moderator.id,
