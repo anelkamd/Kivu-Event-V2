@@ -26,6 +26,15 @@ const statusLabels = {
   cancelled: "Annulé",
 }
 
+function formatDate(dateStr: string) {
+  if (!dateStr) return ""
+  
+  const date = new Date(dateStr.replace(" ", "T"))
+  return isNaN(date.getTime())
+    ? ""
+    : date.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" })
+}
+
 export default function EventsPage() {
   const [filter, setFilter] = useState<string>("all")
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null)
@@ -86,6 +95,17 @@ export default function EventsPage() {
   const handleSearch = (query: string) => {
     setSearchQuery(query)
     filterEvents(filter, query)
+  }
+
+  // Fonction pour copier le lien
+  const handleCopyLink = (eventId: string) => {
+    const url = `${window.location.origin}/events/${eventId}`
+    navigator.clipboard.writeText(url)
+  }
+
+  // Fonction pour rediriger vers les tâches
+  const handleGoToTasks = (eventId: string) => {
+    window.location.href = `/dashboard/tasks?eventId=${eventId}`
   }
 
   return (
@@ -188,42 +208,30 @@ export default function EventsPage() {
                   )}
                   onClick={() => setSelectedEvent(event)}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={event.organizer?.avatar || "/placeholder.svg"} alt={event.organizer?.name || "?"} />
-                        <AvatarFallback>{event.organizer?.name?.charAt(0) || "?"}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{event.organizer?.name}</div>
-                        <div className="text-xs text-muted-foreground">{event.category}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge className={cn("text-xs", statusColors[event.status])}>{statusLabels[event.status]}</Badge>
+                  <div className="flex items-center space-x-3 mb-2">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={event.image || "/placeholder.svg"} alt={event.title} />
+                      <AvatarFallback>{event.title?.charAt(0) || "?"}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{event.title}</div>
+                      <div className="text-xs text-muted-foreground">{event.type}</div>
                     </div>
                   </div>
-                  <h3 className="font-medium text-lg mb-2">{event.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{event.description}</p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {new Date(event.date).toLocaleDateString("fr-FR")}
-                      </div>
-                      <div className="flex items-center">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {event.time}
-                      </div>
-                      <div className="flex items-center">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        {event.location}
-                      </div>
-                    </div>
-                    <div className="flex items-center">
-                      <Users className="h-3 w-3 mr-1" />
-                      {event.participants}/{event.maxParticipants}
-                    </div>
+                  <div className="mb-2 text-sm text-muted-foreground line-clamp-2">{event.description}</div>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <Badge>{event.status}</Badge>
+                    <Badge variant="outline">{event.tags}</Badge>
+                  </div>
+                  <div className="flex items-center text-xs text-muted-foreground gap-4">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    {formatDate(event.start_date)} - {formatDate(event.end_date)}
+                    <Users className="h-3 w-3 ml-4 mr-1" />
+                    {event.participants_count ?? 0} participants
+                    <MapPin className="h-3 w-3 ml-4 mr-1" />
+                    {event.venue_id}
+                    <Star className="h-3 w-3 ml-4 mr-1" />
+                    {event.price} €
                   </div>
                 </div>
               ))
@@ -242,54 +250,49 @@ export default function EventsPage() {
         </div>
 
         {/* Event detail */}
-        {selectedEvent ? (
+        {selectedEvent && (
           <div className="flex-1 bg-background md:border-l overflow-y-auto">
-            <div className="sticky top-0 bg-background z-10 p-6 border-b">
-              <div className="flex items-center justify-between mb-4">
-                <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSelectedEvent(null)}>
-                  <X className="h-5 w-5" />
-                </Button>
-                <div className="flex items-center space-x-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Modifier
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Eye className="h-4 w-4 mr-2" />
-                        Voir public
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Supprimer
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+            {/* Couverture */}
+            <div className="relative w-full h-48 md:h-64 mb-4">
+              <img
+                src={selectedEvent.image || "/placeholder.svg"}
+                alt={selectedEvent.title}
+                className="object-cover w-full h-full rounded-b-xl"
+                style={{ objectPosition: "center" }}
+              />
+              <div className="absolute bottom-4 left-6 text-white text-2xl font-bold drop-shadow-lg">
+                {selectedEvent.title}
               </div>
+            </div>
+            <div className="sticky top-0 bg-background z-10 p-6 border-b">
               <div className="flex items-center space-x-3 mb-4">
                 <Avatar className="h-12 w-12">
-                  <AvatarImage
-                    src={selectedEvent.organizer?.avatar || "/placeholder.svg"}
-                    alt={selectedEvent.organizer?.name || "?"}
-                  />
-                  <AvatarFallback>{selectedEvent.organizer?.name?.charAt(0) || "?"}</AvatarFallback>
+                  <AvatarImage src={selectedEvent.image || "/placeholder.svg"} alt={selectedEvent.title} />
+                  <AvatarFallback>{selectedEvent.title?.charAt(0) || "?"}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="font-medium">{selectedEvent.organizer?.name}</div>
-                  <div className="text-sm text-muted-foreground">Organisateur • {selectedEvent.category}</div>
+                  <div className="font-medium">{selectedEvent.title}</div>
+                  <div className="text-sm text-muted-foreground">{selectedEvent.type}</div>
                 </div>
               </div>
               <h2 className="text-2xl font-medium mb-2">{selectedEvent.title}</h2>
-              <Badge className={cn("mb-4", statusColors[selectedEvent.status])}>
-                {statusLabels[selectedEvent.status]}
-              </Badge>
+              <Badge className="mb-4">{selectedEvent.status}</Badge>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyLink(selectedEvent.id)}
+                >
+                  Copier le lien
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleGoToTasks(selectedEvent.id)}
+                >
+                  Voir les tâches
+                </Button>
+              </div>
             </div>
             <div className="p-6 space-y-6">
               <Card>
@@ -299,72 +302,47 @@ export default function EventsPage() {
                 <CardContent className="space-y-4">
                   <p className="text-muted-foreground">{selectedEvent.description}</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-3">
-                      <Calendar className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">Date</div>
-                        <div className="text-sm text-muted-foreground">
-                          {new Date(selectedEvent.date).toLocaleDateString("fr-FR", {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </div>
+                    <div>
+                      <div className="font-medium">Type</div>
+                      <div className="text-sm text-muted-foreground">{selectedEvent.type}</div>
+                    </div>
+                    <div>
+                      <div className="font-medium">Date</div>
+                      <div className="text-sm text-muted-foreground">
+                        {formatDate(selectedEvent.start_date)} - {formatDate(selectedEvent.end_date)}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Clock className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">Heure</div>
-                        <div className="text-sm text-muted-foreground">{selectedEvent.time}</div>
-                      </div>
+                    <div>
+                      <div className="font-medium">Capacité</div>
+                      <div className="text-sm text-muted-foreground">{selectedEvent.capacity} places</div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <MapPin className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">Lieu</div>
-                        <div className="text-sm text-muted-foreground">{selectedEvent.location}</div>
-                      </div>
+                    <div>
+                      <div className="font-medium">Lieu</div>
+                      <div className="text-sm text-muted-foreground">{selectedEvent.venue_id}</div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Users className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">Participants</div>
-                        <div className="text-sm text-muted-foreground">
-                          {selectedEvent.participants} / {selectedEvent.maxParticipants} inscrits
-                        </div>
+                    <div>
+                      <div className="font-medium">Prix</div>
+                      <div className="text-sm text-muted-foreground">{selectedEvent.price} €</div>
+                    </div>
+                    <div>
+                      <div className="font-medium">Tags</div>
+                      <div className="text-sm text-muted-foreground">{selectedEvent.tags}</div>
+                    </div>
+                    <div>
+                      <div className="font-medium">Participants</div>
+                      <div className="text-sm text-muted-foreground">{selectedEvent.participants_count ?? 0}</div>
+                    </div>
+                    <div>
+                      <div className="font-medium">Lien complet</div>
+                      <div className="text-sm text-muted-foreground break-all">
+                        <a href={`/events/${selectedEvent.id}`} target="_blank" rel="noopener noreferrer">
+                          {window.location.origin}/events/{selectedEvent.id}
+                        </a>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <div className="flex space-x-2">
-                <Button>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Modifier l'événement
-                </Button>
-                <Button variant="outline">
-                  <Users className="h-4 w-4 mr-2" />
-                  Voir les participants
-                </Button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="hidden md:flex flex-1 items-center justify-center bg-muted/5">
-            <div className="text-center max-w-md p-8">
-              <div className="bg-primary/5 p-6 rounded-full inline-block mb-4">
-                <Calendar className="h-10 w-10 text-primary/80" />
-              </div>
-              <h3 className="text-xl font-medium mb-2">Gestion des événements</h3>
-              <p className="text-muted-foreground mb-6">
-                Sélectionnez un événement dans la liste pour voir ses détails et le modifier.
-              </p>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Créer un événement
-              </Button>
             </div>
           </div>
         )}
