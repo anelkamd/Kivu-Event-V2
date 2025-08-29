@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   CheckSquare,
@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Progress } from "@/components/ui/progress"
+import CreateTaskForm from "@/components/CreateTaskForm"
 
 interface Task {
   id: string
@@ -154,6 +155,17 @@ export default function TasksPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showSearch, setShowSearch] = useState(false)
   const [visibleTasks, setVisibleTasks] = useState<Task[]>(mockTasks)
+  const [eventId, setEventId] = useState("")
+  const [events, setEvents] = useState([])
+
+  useEffect(() => {
+    // Récupère les événements de l'utilisateur
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/my-events`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setEvents(data.data || []))
+  }, [])
 
   const filterTasks = (filterType: string, query: string) => {
     let filtered = [...mockTasks]
@@ -534,15 +546,17 @@ export default function TasksPage() {
                 <p className="text-muted-foreground mb-6">
                   Sélectionnez une tâche dans la liste pour voir ses détails et suivre sa progression.
                 </p>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Créer une tâche
-                </Button>
+                
+                  <CreateTaskForm onTaskCreated={() => {/* refresh tasks if needed */}} />
+                
               </div>
             </div>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Create Task Form - Ajouté ici */}
+      
     </div>
   )
 }
