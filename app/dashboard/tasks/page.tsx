@@ -32,6 +32,7 @@ import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
 import CreateTaskForm from "@/components/CreateTaskForm"
 import { useAuth } from "@/context/AuthContext"
+import { useSearchParams } from "next/navigation"
 
 interface Task {
   id: string
@@ -119,6 +120,9 @@ const statusIcons = {
 
 export default function TasksPage() {
   const { user, token } = useAuth()
+  const searchParams = useSearchParams()
+  const urlEventId = searchParams.get("eventId")
+
   const [filter, setFilter] = useState<string>("all")
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -205,7 +209,7 @@ export default function TasksPage() {
 
           console.log("[v0] Tasks fetched successfully:", allTasks.length, "tasks")
           setTasks(allTasks)
-          setVisibleTasks(allTasks)
+          filterTasks(filter, searchQuery)
 
           // Group tasks by event
           const grouped = allTasks.reduce((acc: GroupedTasks, task: Task) => {
@@ -478,8 +482,18 @@ export default function TasksPage() {
     }
   }, [token])
 
+  useEffect(() => {
+    if (tasks.length > 0) {
+      filterTasks(filter, searchQuery)
+    }
+  }, [urlEventId, tasks, filter, searchQuery])
+
   const filterTasks = (filterType: string, query: string) => {
     let filtered = [...tasks]
+
+    if (urlEventId) {
+      filtered = filtered.filter((task) => task.event_id === urlEventId)
+    }
 
     if (filterType !== "all") {
       filtered = filtered.filter((task) => task.status === filterType)
