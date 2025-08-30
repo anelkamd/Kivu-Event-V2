@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   CheckSquare,
@@ -140,129 +140,92 @@ export default function TasksPage() {
     return headers
   }
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = async () => {
     if (!token) {
-      console.log("[v0] No token available, skipping fetch")
+      console.log("No token available, skipping fetch")
       return
     }
 
     try {
       setLoading(true)
-      console.log("[v0] Fetching all tasks from Express API...")
+      console.log("Fetching all tasks from Express API...")
 
-      const eventsResponse = await fetch(`${API_BASE_URL}/api/events`, {
+      // Single API call to get all user tasks
+      const response = await fetch(`${API_BASE_URL}/api/tasks/user`, {
         headers: getAuthHeaders(),
       })
 
-      let allTasks: Task[] = []
+      if (response.ok) {
+        let data = null
+        const responseText = await response.text()
 
-      if (eventsResponse.ok) {
-        let eventsData
-        try {
-          const responseText = await eventsResponse.text()
-          if (responseText) {
-            eventsData = JSON.parse(responseText)
-          }
-        } catch (parseError) {
-          console.error("[v0] Error parsing events response:", parseError)
-          throw new Error("Invalid JSON response from events API")
-        }
-
-        if (eventsData?.success && eventsData?.data) {
-          for (const event of eventsData.data) {
-            try {
-              const tasksResponse = await fetch(`${API_BASE_URL}/api/tasks/event/${event.id}`, {
-                headers: getAuthHeaders(),
-              })
-
-              if (tasksResponse.ok) {
-                let tasksData
-                try {
-                  const responseText = await tasksResponse.text()
-                  if (responseText) {
-                    tasksData = JSON.parse(responseText)
-                  }
-                } catch (parseError) {
-                  console.error(`[v0] Error parsing tasks response for event ${event.id}:`, parseError)
-                  continue
-                }
-
-                if (tasksData?.success && tasksData?.data) {
-                  const tasksWithEvent = tasksData.data.map((task: any) => ({
-                    ...task,
-                    event: { title: event.title },
-                    required_resources: task.required_resources ? JSON.parse(task.required_resources) : [],
-                    tags: task.tags ? JSON.parse(task.tags) : [],
-                    progress_percentage: task.progress_percentage || 0,
-                    actual_hours: task.actual_hours || 0,
-                    is_starred: task.is_starred || false,
-                  }))
-                  allTasks = [...allTasks, ...tasksWithEvent]
-                }
-              } else {
-                console.log(`[v0] Failed to fetch tasks for event ${event.id}: ${tasksResponse.status}`)
-              }
-            } catch (error) {
-              console.error(`[v0] Error fetching tasks for event ${event.id}:`, error)
-            }
-          }
-        }
-      } else {
-        console.log("[v0] Could not fetch events, trying direct task fetch...")
-        const response = await fetch(`${API_BASE_URL}/api/tasks`, {
-          headers: getAuthHeaders(),
-        })
-
-        if (response.ok) {
-          let data
+        if (responseText?.trim()) {
           try {
-            const responseText = await response.text()
-            if (responseText) {
-              data = JSON.parse(responseText)
-            }
+            data = JSON.parse(responseText)
           } catch (parseError) {
-            console.error("[v0] Error parsing direct tasks response:", parseError)
+            console.error("Error parsing tasks response:", parseError)
             throw new Error("Invalid JSON response from tasks API")
           }
-
-          if (data?.success && data?.data) {
-            allTasks = data.data.map((task: any) => ({
-              ...task,
-              required_resources: task.required_resources ? JSON.parse(task.required_resources) : [],
-              tags: task.tags ? JSON.parse(task.tags) : [],
-              progress_percentage: task.progress_percentage || 0,
-              actual_hours: task.actual_hours || 0,
-              is_starred: task.is_starred || false,
-              event: { title: "Événement sans nom" },
-            }))
-          }
         } else {
-          console.log(`[v0] Direct tasks fetch failed: ${response.status}`)
+          console.warn("[v0] Empty response from tasks API")
+          setTasks([])
+          setVisibleTasks([])
+          setGroupedTasks({})
+          return
         }
+
+        if (data?.success && data?.data) {
+          const allTasks = data.data.map((task: any) => ({
+            ...task,
+            required_resources: task.required_resources
+              ? typeof task.required_resources === "string"
+                ? JSON.parse(task.required_resources)
+                : task.required_resources
+              : [],
+            tags: task.tags ? (typeof task.tags === "string" ? JSON.parse(task.tags) : task.tags) : [],
+            progress_percentage: task.progress_percentage || 0,
+            actual_hours: task.actual_hours || 0,
+            is_starred: task.is_starred || false,
+            event: task.event || { title: "Événement sans nom" },
+          }))
+
+          console.log("Tasks fetched successfully:", allTasks.length, "tasks")
+          setTasks(allTasks)
+          setVisibleTasks(allTasks)
+
+          // Group tasks by event
+          const grouped = allTasks.reduce((acc: GroupedTasks, task: Task) => {
+            const eventId = task.event_id || "no-event"
+            const eventTitle = task.event?.title || "Événement sans nom"
+
+            if (!acc[eventId]) {
+              acc[eventId] = {
+                eventTitle,
+                tasks: [],
+              }
+            }
+
+            acc[eventId].tasks.push(task)
+            return acc
+          }, {})
+
+          setGroupedTasks(grouped)
+        } else {
+          console.log("No tasks data in response")
+          setTasks([])
+          setVisibleTasks([])
+          setGroupedTasks({})
+        }
+      } else {
+        console.log(`Tasks fetch failed: ${response.status}`)
+        toast({
+          title: "Erreur",
+          description: `Erreur ${response.status}: Impossible de charger les tâches`,
+          variant: "destructive",
+        })
       }
-
-      console.log("[v0] Tasks fetched successfully:", allTasks.length, "tasks")
-      setTasks(allTasks)
-      setVisibleTasks(allTasks)
-
-      const grouped = allTasks.reduce((acc: GroupedTasks, task: Task) => {
-        const eventId = task.event_id || "no-event"
-        const eventTitle = task.event?.title || "Événement sans nom"
-
-        if (!acc[eventId]) {
-          acc[eventId] = {
-            eventTitle,
-            tasks: [],
-          }
-        }
-
-        acc[eventId].tasks.push(task)
-        return acc
-      }, {})
-
-      setGroupedTasks(grouped)
     } catch (error) {
-      console.error("[v0] Network error fetching tasks:", error)
+      console.error("Network error fetching tasks:", error)
       toast({
         title: "Erreur",
         description: "Erreur de connexion lors du chargement des tâches",
@@ -271,7 +234,7 @@ export default function TasksPage() {
     } finally {
       setLoading(false)
     }
-  }, [token, API_BASE_URL]) // Removed toast from dependencies to prevent infinite loop
+  }
 
   const updateTaskStatus = async (taskId: string, status: string) => {
     if (!token) {
@@ -284,7 +247,7 @@ export default function TasksPage() {
     }
 
     try {
-      console.log("[v0] Updating task status:", taskId, "to", status)
+      console.log("Updating task status:", taskId, "to", status)
 
       const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}`, {
         method: "PUT",
@@ -300,7 +263,7 @@ export default function TasksPage() {
             data = JSON.parse(responseText)
           }
         } catch (parseError) {
-          console.error("[v0] Error parsing update response:", parseError)
+          console.error("Error parsing update response:", parseError)
           throw new Error("Invalid JSON response from update API")
         }
 
@@ -325,7 +288,7 @@ export default function TasksPage() {
         })
       }
     } catch (error) {
-      console.error("[v0] Error updating task:", error)
+      console.error("Error updating task:", error)
       toast({
         title: "Erreur",
         description: "Erreur lors de la mise à jour",
@@ -345,7 +308,7 @@ export default function TasksPage() {
     }
 
     try {
-      console.log("[v0] Deleting task:", taskId)
+      console.log("Deleting task:", taskId)
 
       const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}`, {
         method: "DELETE",
@@ -360,7 +323,7 @@ export default function TasksPage() {
             data = JSON.parse(responseText)
           }
         } catch (parseError) {
-          console.error("[v0] Error parsing delete response:", parseError)
+          console.error("Error parsing delete response:", parseError)
           throw new Error("Invalid JSON response from delete API")
         }
 
@@ -386,7 +349,7 @@ export default function TasksPage() {
         })
       }
     } catch (error) {
-      console.error("[v0] Error deleting task:", error)
+      console.error("Error deleting task:", error)
       toast({
         title: "Erreur",
         description: "Erreur lors de la suppression",
@@ -399,7 +362,7 @@ export default function TasksPage() {
     if (token) {
       fetchTasks()
     }
-  }, [token, fetchTasks])
+  }, [token])
 
   const filterTasks = (filterType: string, query: string) => {
     let filtered = [...tasks]

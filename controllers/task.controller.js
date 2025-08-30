@@ -113,3 +113,57 @@ export const deleteTask = async (req, res) => {
     res.status(400).json({ success: false, error: error.message })
   }
 }
+
+const safeJsonParse = (jsonString, defaultValue = []) => {
+  if (!jsonString || typeof jsonString !== "string") {
+    return defaultValue
+  }
+
+  try {
+    // Check if it's already a valid JSON string (starts with [ or {)
+    if (jsonString.startsWith("[") || jsonString.startsWith("{")) {
+      return JSON.parse(jsonString)
+    } else {
+      // If it's a simple string like "test", treat it as a single item array
+      return [jsonString]
+    }
+  } catch (error) {
+    // If parsing fails, return the string as a single item array
+    return [jsonString]
+  }
+}
+
+// Récupérer toutes les tâches de l'utilisateur connecté
+export const getUserTasks = async (req, res) => {
+  try {
+    const userId = req.user.id // ID de l'utilisateur connecté depuis le middleware auth
+
+    const [tasks] = await sequelize.query(
+      `SELECT t.*, e.title as event_title 
+       FROM tasks t 
+       LEFT JOIN events e ON t.event_id = e.id 
+       WHERE t.created_by = ? OR t.assigned_to = ? 
+       ORDER BY t.deadline ASC`,
+      {
+        replacements: [userId, userId],
+      },
+    )
+
+    const transformedTasks = tasks.map((task) => ({
+      ...task,
+      event: {
+        title: task.event_title || "Événement sans nom",
+      },
+      required_resources: safeJsonParse(task.required_resources, []),
+      tags: safeJsonParse(task.tags, []),
+      progress_percentage: task.progress_percentage || 0,
+      actual_hours: task.actual_hours || 0,
+      is_starred: task.is_starred || false,
+    }))
+
+    res.json({ success: true, data: transformedTasks })
+  } catch (error) {
+    console.error("[Backend] getUserTasks error:", error)
+    res.status(400).json({ success: false, error: error.message, data: [] })
+  }
+}
