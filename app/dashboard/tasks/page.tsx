@@ -263,10 +263,15 @@ export default function TasksPage() {
     try {
       console.log("[v0] Updating task status:", taskId, "to", status)
 
+      const updateData: any = { status }
+      if (status === "terminee") {
+        updateData.progress_percentage = 100
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}`, {
         method: "PUT",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(updateData),
       })
 
       if (response.ok) {
@@ -282,11 +287,33 @@ export default function TasksPage() {
         }
 
         if (data?.success) {
+          const updatedTasks = tasks.map((task) =>
+            task.id === taskId
+              ? {
+                  ...task,
+                  status: status as Task["status"],
+                  progress_percentage: status === "terminee" ? 100 : task.progress_percentage,
+                }
+              : task,
+          )
+          setTasks(updatedTasks)
+          filterTasks(filter, searchQuery)
+
+          if (selectedTask?.id === taskId) {
+            setSelectedTask({
+              ...selectedTask,
+              status: status as Task["status"],
+              progress_percentage: status === "terminee" ? 100 : selectedTask.progress_percentage,
+            })
+          }
+
           toast({
             title: "Succès",
-            description: "Statut de la tâche mis à jour",
+            description:
+              status === "terminee"
+                ? "Tâche marquée comme terminée avec progression à 100%"
+                : "Statut de la tâche mis à jour",
           })
-          fetchTasks()
         } else {
           toast({
             title: "Erreur",
@@ -344,7 +371,6 @@ export default function TasksPage() {
         }
 
         if (data?.success) {
-          // Update local state immediately for better UX
           const updatedTasks = tasks.map((task) =>
             task.id === taskId ? { ...task, progress_percentage: progress } : task,
           )
