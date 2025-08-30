@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.0.42, for Linux (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.43, for Linux (x86_64)
 --
 -- Host: localhost    Database: kivu_event
 -- ------------------------------------------------------
--- Server version	8.0.42-0ubuntu0.24.04.2
+-- Server version	8.0.43-0ubuntu0.24.04.1
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -91,6 +91,38 @@ CREATE TABLE `events` (
   KEY `venue_id` (`venue_id`),
   CONSTRAINT `events_ibfk_3` FOREIGN KEY (`venue_id`) REFERENCES `venues` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `moderators`
+--
+
+DROP TABLE IF EXISTS `moderators`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `moderators` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `google_id` varchar(255) DEFAULT NULL,
+  `first_name` varchar(100) DEFAULT NULL,
+  `last_name` varchar(100) DEFAULT NULL,
+  `profile_image` varchar(255) DEFAULT NULL,
+  `specialization` varchar(255) DEFAULT NULL,
+  `bio` text,
+  `phone_number` varchar(20) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT '1',
+  `invitation_token` varchar(255) DEFAULT NULL,
+  `invitation_expires_at` datetime DEFAULT NULL,
+  `invited_by` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `invited_at` datetime DEFAULT NULL,
+  `activated_at` datetime DEFAULT NULL,
+  `last_login` datetime DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `google_id` (`google_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -253,4 +285,4 @@ CREATE TABLE `venues` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-15 11:22:55
+-- Dump completed on 2025-08-31  1:07:17
