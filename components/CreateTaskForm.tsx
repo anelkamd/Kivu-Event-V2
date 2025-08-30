@@ -19,7 +19,6 @@ export default function CreateTaskForm({ onTaskCreated }) {
   const [requiredResources, setRequiredResources] = useState("")
   const [budgetAllocated, setBudgetAllocated] = useState("")
   const [tags, setTags] = useState("")
-  const [attachments, setAttachments] = useState<File | null>(null)
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -33,47 +32,54 @@ export default function CreateTaskForm({ onTaskCreated }) {
       .then(data => setEvents(data.data || []))
   }, [])
 
+  const resetForm = () => {
+    setStep(1)
+    setTitle("")
+    setDescription("")
+    setPriority("normale")
+    setCategory("")
+    setEstimatedHours(1)
+    setDeadline("")
+    setEventId("")
+    setValidationRequired(false)
+    setRequiredResources("")
+    setBudgetAllocated("")
+    setTags("")
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError("")
     setSuccess(false)
-    const formData = new FormData()
-    formData.append("title", title)
-    formData.append("description", description)
-    formData.append("priority", priority)
-    formData.append("category", category)
-    formData.append("estimated_hours", estimatedHours.toString())
-    formData.append("deadline", deadline)
-    formData.append("event_id", eventId)
-    formData.append("validation_required", validationRequired ? "1" : "0")
-    formData.append("required_resources", requiredResources)
-    formData.append("budget_allocated", budgetAllocated)
-    formData.append("tags", tags)
-    if (attachments) formData.append("attachments", attachments)
+
+    const payload = {
+      eventId,
+      title,
+      description,
+      priority,
+      deadline,
+      category,
+      estimatedHours,
+      budgetAllocated,
+      validationRequired,
+      requiredResources,
+      tags
+    }
 
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify(payload),
       })
       if (res.ok) {
+        resetForm()
         setSuccess(true)
         setOpen(false)
-        setStep(1)
-        setTitle("")
-        setDescription("")
-        setPriority("normale")
-        setCategory("")
-        setEstimatedHours(1)
-        setDeadline("")
-        setEventId("")
-        setValidationRequired(false)
-        setRequiredResources("")
-        setBudgetAllocated("")
-        setTags("")
-        setAttachments(null)
         if (onTaskCreated) onTaskCreated()
       } else {
         const data = await res.json()
@@ -110,7 +116,6 @@ export default function CreateTaskForm({ onTaskCreated }) {
         <form
           className="space-y-6"
           onSubmit={step === 2 ? handleSubmit : handleNext}
-          encType="multipart/form-data"
         >
           {step === 1 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -216,12 +221,7 @@ export default function CreateTaskForm({ onTaskCreated }) {
                   onChange={e => setTags(e.target.value)}
                   className="mb-4"
                 />
-                <label className="block text-sm font-medium mb-1">Pièces jointes</label>
-                <Input
-                  type="file"
-                  onChange={e => setAttachments(e.target.files?.[0] || null)}
-                  className="mb-4"
-                />
+                {/* 🔴 Champ fichier désactivé pour l’instant */}
               </div>
             </div>
           )}

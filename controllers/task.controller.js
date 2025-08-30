@@ -13,13 +13,24 @@ export const createTask = async (req, res) => {
       estimatedHours,
       budgetAllocated,
       validationRequired,
-    } = req.body
+      requiredResources,
+      tags,
+    } = req.body;
+
+    const createdBy = req.user.id; // ⚠️ adapte selon ton middleware auth
+
+    // deadline → format SQL
+    const formattedDeadline = deadline
+      ? deadline.replace("T", " ") + ":00"
+      : null;
 
     await sequelize.query(
       `INSERT INTO tasks (
-        id, event_id, title, description, priority, deadline, category, estimated_hours, budget_allocated, validation_required, status
+        id, event_id, title, description, priority, deadline, category,
+        estimated_hours, budget_allocated, validation_required, status,
+        created_by, required_resources, tags
       ) VALUES (
-        UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, 'a_faire'
+        UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, 'a_faire', ?, ?, ?
       )`,
       {
         replacements: [
@@ -27,20 +38,26 @@ export const createTask = async (req, res) => {
           title,
           description,
           priority,
-          deadline,
+          formattedDeadline,
           category,
           estimatedHours,
           budgetAllocated,
           validationRequired ? 1 : 0,
+          createdBy,
+          requiredResources ? JSON.stringify(requiredResources) : JSON.stringify([]), // ✅ correction
+          tags ? JSON.stringify(tags.split(",").map(t => t.trim())) : JSON.stringify([]), // ✅ correction
         ],
       }
-    )
+    );
 
-    res.json({ success: true, message: "Tâche créée !" })
+    res.json({ success: true, message: "Tâche créée avec succès !" });
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message })
+    console.error(error);
+    res.status(400).json({ success: false, error: error.message });
   }
-}
+};
+
+
 
 // Récupérer toutes les tâches d'un événement
 export const getTasksByEvent = async (req, res) => {
