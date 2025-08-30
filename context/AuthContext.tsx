@@ -18,6 +18,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null
+  token: string | null // Added token property for API calls
   loading: boolean
   error: string | null
   register: (firstName: string, lastName: string, email: string, password: string) => Promise<void>
@@ -31,6 +32,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
+  const [token, setToken] = useState<string | null>(null) // Added token state
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
@@ -38,27 +40,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const checkUserLoggedIn = async () => {
       try {
-        const token = localStorage.getItem("token")
-        console.log("Checking authentication with token:", token ? "exists" : "missing")
+        const storedToken = localStorage.getItem("token")
+        console.log("[v0] Checking authentication with token:", storedToken ? "exists" : "missing")
+        console.log("[v0] Token value:", storedToken)
 
-        if (!token) {
-          console.log("No token found, user not authenticated")
+        if (!storedToken) {
+          console.log("[v0] No token found, user not authenticated")
           setLoading(false)
           return
         }
 
+        setToken(storedToken)
+        console.log("[v0] Token set in state:", storedToken)
+
         const res = await axios.get("/api/auth/me")
-        console.log("Authentication check response:", res.data)
+        console.log("[v0] Authentication check response:", res.data)
 
         if (res.data.success) {
-          console.log("User authenticated successfully:", res.data.data)
+          console.log("[v0] User authenticated successfully:", res.data.data)
           setUser(res.data.data)
         }
       } catch (error: any) {
-        console.error("Authentication check failed:", error)
+        console.error("[v0] Authentication check failed:", error)
         localStorage.removeItem("token")
         document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
         setUser(null)
+        setToken(null)
       } finally {
         setLoading(false)
       }
@@ -83,6 +90,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (res.data.success) {
         localStorage.setItem("token", res.data.token)
         document.cookie = `token=${res.data.token}; path=/; max-age=${60 * 60 * 24 * 7}` // 7 jours
+        setToken(res.data.token) // Set token state
         setUser(res.data.data)
         toast({
           title: "Inscription réussie",
@@ -124,6 +132,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.setItem("token", res.data.token)
         document.cookie = `token=${res.data.token}; path=/; max-age=${60 * 60 * 24 * 7}` // 7 jours
 
+        setToken(res.data.token) // Set token state
         setUser(res.data.data)
         toast({
           title: "Connexion réussie",
@@ -179,6 +188,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.removeItem("token")
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
     setUser(null)
+    setToken(null) // Clear token state
 
     // Utiliser window.location.href pour une redirection complète
     window.location.href = "/login"
@@ -195,20 +205,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-      <AuthContext.Provider
-          value={{
-            user,
-            loading,
-            error,
-            register,
-            login,
-            loginWithGoogle,
-            logout,
-            clearError,
-          }}
-      >
-        {children}
-      </AuthContext.Provider>
+    <AuthContext.Provider
+      value={{
+        user,
+        token, // Include token in context value
+        loading,
+        error,
+        register,
+        login,
+        loginWithGoogle,
+        logout,
+        clearError,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   )
 }
 
@@ -220,4 +231,3 @@ export const useAuth = () => {
   }
   return context
 }
-

@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   CheckSquare,
@@ -18,6 +18,7 @@ import {
   XCircle,
   Star,
   X,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -27,83 +28,44 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Progress } from "@/components/ui/progress"
+import { useToast } from "@/hooks/use-toast"
 import CreateTaskForm from "@/components/CreateTaskForm"
+import { useAuth } from "@/context/AuthContext"
 
 interface Task {
   id: string
+  event_id: string
   title: string
   description: string
   priority: "basse" | "normale" | "haute" | "critique"
-  status: "a_faire" | "en_cours" | "en_attente_validation" | "validee" | "rejetee" | "terminee" | "annulee"
-  category: string
-  estimatedHours: number
-  actualHours: number
   deadline: string
-  assignedTo: {
+  category: string
+  estimated_hours: number
+  budget_allocated?: number
+  validation_required: boolean
+  status: "a_faire" | "en_cours" | "en_attente_validation" | "validee" | "rejetee" | "terminee" | "annulee"
+  created_by: string
+  assigned_to?: string
+  required_resources?: string[]
+  tags?: string[]
+  progress_percentage?: number
+  actual_hours?: number
+  is_starred?: boolean
+  assignedUser?: {
     name: string
     avatar?: string
   }
-  eventTitle: string
-  progressPercentage: number
-  isStarred: boolean
+  event?: {
+    title: string
+  }
 }
 
-const mockTasks: Task[] = [
-  {
-    id: "1",
-    title: "Confirmer le lieu de la conférence",
-    description: "Contacter l'hôtel Marriott pour confirmer la réservation de la salle principale",
-    priority: "critique",
-    status: "en_cours",
-    category: "Logistique",
-    estimatedHours: 2,
-    actualHours: 1.5,
-    deadline: "2024-03-10",
-    assignedTo: {
-      name: "Marie Lukaku",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    eventTitle: "Conférence Tech Kivu 2024",
-    progressPercentage: 75,
-    isStarred: true,
-  },
-  {
-    id: "2",
-    title: "Préparer les supports de présentation",
-    description: "Créer les slides pour la présentation d'ouverture",
-    priority: "haute",
-    status: "a_faire",
-    category: "Contenu",
-    estimatedHours: 8,
-    actualHours: 0,
-    deadline: "2024-03-12",
-    assignedTo: {
-      name: "Jean Kabongo",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    eventTitle: "Workshop Développement Web",
-    progressPercentage: 0,
-    isStarred: false,
-  },
-  {
-    id: "3",
-    title: "Envoyer les invitations",
-    description: "Envoyer les invitations par email à tous les participants confirmés",
-    priority: "normale",
-    status: "terminee",
-    category: "Communication",
-    estimatedHours: 3,
-    actualHours: 2.5,
-    deadline: "2024-03-08",
-    assignedTo: {
-      name: "Paul Mbuyi",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    eventTitle: "Networking Business",
-    progressPercentage: 100,
-    isStarred: true,
-  },
-]
+interface GroupedTasks {
+  [eventId: string]: {
+    eventTitle: string
+    tasks: Task[]
+  }
+}
 
 const priorityColors = {
   basse: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
@@ -150,25 +112,297 @@ const statusIcons = {
 }
 
 export default function TasksPage() {
+  const { user, token } = useAuth()
   const [filter, setFilter] = useState<string>("all")
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [showSearch, setShowSearch] = useState(false)
-  const [visibleTasks, setVisibleTasks] = useState<Task[]>(mockTasks)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [visibleTasks, setVisibleTasks] = useState<Task[]>([])
+  const [groupedTasks, setGroupedTasks] = useState<GroupedTasks>({})
+  const [loading, setLoading] = useState(true)
   const [eventId, setEventId] = useState("")
   const [events, setEvents] = useState([])
+  const { toast } = useToast()
+
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+
+  const getAuthHeaders = () => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    }
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`
+    }
+
+    return headers
+  }
+
+  const fetchTasks = useCallback(async () => {
+    if (!token) {
+      console.log("[v0] No token available, skipping fetch")
+      return
+    }
+
+    try {
+      setLoading(true)
+      console.log("[v0] Fetching all tasks from Express API...")
+
+      const eventsResponse = await fetch(`${API_BASE_URL}/api/events`, {
+        headers: getAuthHeaders(),
+      })
+
+      let allTasks: Task[] = []
+
+      if (eventsResponse.ok) {
+        let eventsData
+        try {
+          const responseText = await eventsResponse.text()
+          if (responseText) {
+            eventsData = JSON.parse(responseText)
+          }
+        } catch (parseError) {
+          console.error("[v0] Error parsing events response:", parseError)
+          throw new Error("Invalid JSON response from events API")
+        }
+
+        if (eventsData?.success && eventsData?.data) {
+          for (const event of eventsData.data) {
+            try {
+              const tasksResponse = await fetch(`${API_BASE_URL}/api/tasks/event/${event.id}`, {
+                headers: getAuthHeaders(),
+              })
+
+              if (tasksResponse.ok) {
+                let tasksData
+                try {
+                  const responseText = await tasksResponse.text()
+                  if (responseText) {
+                    tasksData = JSON.parse(responseText)
+                  }
+                } catch (parseError) {
+                  console.error(`[v0] Error parsing tasks response for event ${event.id}:`, parseError)
+                  continue
+                }
+
+                if (tasksData?.success && tasksData?.data) {
+                  const tasksWithEvent = tasksData.data.map((task: any) => ({
+                    ...task,
+                    event: { title: event.title },
+                    required_resources: task.required_resources ? JSON.parse(task.required_resources) : [],
+                    tags: task.tags ? JSON.parse(task.tags) : [],
+                    progress_percentage: task.progress_percentage || 0,
+                    actual_hours: task.actual_hours || 0,
+                    is_starred: task.is_starred || false,
+                  }))
+                  allTasks = [...allTasks, ...tasksWithEvent]
+                }
+              } else {
+                console.log(`[v0] Failed to fetch tasks for event ${event.id}: ${tasksResponse.status}`)
+              }
+            } catch (error) {
+              console.error(`[v0] Error fetching tasks for event ${event.id}:`, error)
+            }
+          }
+        }
+      } else {
+        console.log("[v0] Could not fetch events, trying direct task fetch...")
+        const response = await fetch(`${API_BASE_URL}/api/tasks`, {
+          headers: getAuthHeaders(),
+        })
+
+        if (response.ok) {
+          let data
+          try {
+            const responseText = await response.text()
+            if (responseText) {
+              data = JSON.parse(responseText)
+            }
+          } catch (parseError) {
+            console.error("[v0] Error parsing direct tasks response:", parseError)
+            throw new Error("Invalid JSON response from tasks API")
+          }
+
+          if (data?.success && data?.data) {
+            allTasks = data.data.map((task: any) => ({
+              ...task,
+              required_resources: task.required_resources ? JSON.parse(task.required_resources) : [],
+              tags: task.tags ? JSON.parse(task.tags) : [],
+              progress_percentage: task.progress_percentage || 0,
+              actual_hours: task.actual_hours || 0,
+              is_starred: task.is_starred || false,
+              event: { title: "Événement sans nom" },
+            }))
+          }
+        } else {
+          console.log(`[v0] Direct tasks fetch failed: ${response.status}`)
+        }
+      }
+
+      console.log("[v0] Tasks fetched successfully:", allTasks.length, "tasks")
+      setTasks(allTasks)
+      setVisibleTasks(allTasks)
+
+      const grouped = allTasks.reduce((acc: GroupedTasks, task: Task) => {
+        const eventId = task.event_id || "no-event"
+        const eventTitle = task.event?.title || "Événement sans nom"
+
+        if (!acc[eventId]) {
+          acc[eventId] = {
+            eventTitle,
+            tasks: [],
+          }
+        }
+
+        acc[eventId].tasks.push(task)
+        return acc
+      }, {})
+
+      setGroupedTasks(grouped)
+    } catch (error) {
+      console.error("[v0] Network error fetching tasks:", error)
+      toast({
+        title: "Erreur",
+        description: "Erreur de connexion lors du chargement des tâches",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [token, API_BASE_URL]) // Removed toast from dependencies to prevent infinite loop
+
+  const updateTaskStatus = async (taskId: string, status: string) => {
+    if (!token) {
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté pour effectuer cette action",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      console.log("[v0] Updating task status:", taskId, "to", status)
+
+      const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status }),
+      })
+
+      if (response.ok) {
+        let data
+        try {
+          const responseText = await response.text()
+          if (responseText) {
+            data = JSON.parse(responseText)
+          }
+        } catch (parseError) {
+          console.error("[v0] Error parsing update response:", parseError)
+          throw new Error("Invalid JSON response from update API")
+        }
+
+        if (data?.success) {
+          toast({
+            title: "Succès",
+            description: "Statut de la tâche mis à jour",
+          })
+          fetchTasks()
+        } else {
+          toast({
+            title: "Erreur",
+            description: data?.error || "Impossible de mettre à jour la tâche",
+            variant: "destructive",
+          })
+        }
+      } else {
+        toast({
+          title: "Erreur",
+          description: `Erreur ${response.status}: ${response.statusText}`,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("[v0] Error updating task:", error)
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la mise à jour",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const deleteTask = async (taskId: string) => {
+    if (!token) {
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté pour effectuer cette action",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      console.log("[v0] Deleting task:", taskId)
+
+      const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      })
+
+      if (response.ok) {
+        let data
+        try {
+          const responseText = await response.text()
+          if (responseText) {
+            data = JSON.parse(responseText)
+          }
+        } catch (parseError) {
+          console.error("[v0] Error parsing delete response:", parseError)
+          throw new Error("Invalid JSON response from delete API")
+        }
+
+        if (data?.success) {
+          toast({
+            title: "Succès",
+            description: "Tâche supprimée avec succès",
+          })
+          setSelectedTask(null)
+          fetchTasks()
+        } else {
+          toast({
+            title: "Erreur",
+            description: data?.error || "Impossible de supprimer la tâche",
+            variant: "destructive",
+          })
+        }
+      } else {
+        toast({
+          title: "Erreur",
+          description: `Erreur ${response.status}: ${response.statusText}`,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("[v0] Error deleting task:", error)
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la suppression",
+        variant: "destructive",
+      })
+    }
+  }
 
   useEffect(() => {
-    // Récupère les événements de l'utilisateur
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/my-events`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-      .then((res) => res.json())
-      .then((data) => setEvents(data.data || []))
-  }, [])
+    if (token) {
+      fetchTasks()
+    }
+  }, [token, fetchTasks])
 
   const filterTasks = (filterType: string, query: string) => {
-    let filtered = [...mockTasks]
+    let filtered = [...tasks]
 
     if (filterType !== "all") {
       filtered = filtered.filter((task) => task.status === filterType)
@@ -181,11 +415,28 @@ export default function TasksPage() {
           task.title.toLowerCase().includes(lowercaseQuery) ||
           task.description.toLowerCase().includes(lowercaseQuery) ||
           task.category.toLowerCase().includes(lowercaseQuery) ||
-          task.eventTitle.toLowerCase().includes(lowercaseQuery),
+          task.event?.title?.toLowerCase().includes(lowercaseQuery),
       )
     }
 
     setVisibleTasks(filtered)
+
+    const grouped = filtered.reduce((acc: GroupedTasks, task: Task) => {
+      const eventId = task.event_id || "no-event"
+      const eventTitle = task.event?.title || "Événement sans nom"
+
+      if (!acc[eventId]) {
+        acc[eventId] = {
+          eventTitle,
+          tasks: [],
+        }
+      }
+
+      acc[eventId].tasks.push(task)
+      return acc
+    }, {})
+
+    setGroupedTasks(grouped)
   }
 
   const handleFilterChange = (filterType: string) => {
@@ -198,20 +449,36 @@ export default function TasksPage() {
     filterTasks(filter, query)
   }
 
-  const toggleStar = (id: string, event: React.MouseEvent) => {
+  const toggleStar = async (id: string, event: React.MouseEvent) => {
     event.stopPropagation()
-    const updatedTasks = mockTasks.map((task) => (task.id === id ? { ...task, isStarred: !task.isStarred } : task))
-    mockTasks.splice(0, mockTasks.length, ...updatedTasks)
-    filterTasks(filter, searchQuery)
+    const task = tasks.find((t) => t.id === id)
+    if (task) {
+      await updateTaskStatus(id, task.status)
+      const updatedTasks = tasks.map((task) => (task.id === id ? { ...task, is_starred: !task.is_starred } : task))
+      setTasks(updatedTasks)
+      filterTasks(filter, searchQuery)
+    }
   }
 
   const isOverdue = (deadline: string) => {
     return new Date(deadline) < new Date() && selectedTask?.status !== "terminee"
   }
 
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Chargement des tâches...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Header */}
       <div className="p-6 flex items-center justify-between border-b">
         <div className="flex items-center space-x-4">
           <h1 className="text-2xl font-medium">Tâches</h1>
@@ -249,14 +516,13 @@ export default function TasksPage() {
             </Button>
           )}
 
-          <Button className="rounded-full">
+          <Button className="rounded-full" onClick={() => setShowCreateForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Nouvelle tâche
           </Button>
         </div>
       </div>
 
-      {/* Filter chips */}
       <div className="px-6 py-4 flex items-center space-x-2 border-b">
         <Button
           variant={filter === "all" ? "default" : "outline"}
@@ -292,83 +558,100 @@ export default function TasksPage() {
         </Button>
       </div>
 
-      {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Tasks list */}
         <div className={cn("w-full md:w-2/5 overflow-y-auto p-6", selectedTask ? "hidden md:block" : "block")}>
           <AnimatePresence>
-            {visibleTasks.length > 0 ? (
-              visibleTasks.map((task) => {
-                const StatusIcon = statusIcons[task.status]
-                const isTaskOverdue = isOverdue(task.deadline)
+            {Object.keys(groupedTasks).length > 0 ? (
+              Object.entries(groupedTasks).map(([eventId, eventGroup]) => (
+                <div key={eventId} className="mb-8">
+                  <div className="flex items-center mb-4 pb-2 border-b">
+                    <h3 className="text-lg font-semibold text-primary">{eventGroup.eventTitle}</h3>
+                    <Badge variant="outline" className="ml-2 rounded-full">
+                      {eventGroup.tasks.length} tâche{eventGroup.tasks.length > 1 ? "s" : ""}
+                    </Badge>
+                  </div>
 
-                return (
-                  <motion.div
-                    key={task.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0, overflow: "hidden" }}
-                    transition={{ duration: 0.2 }}
-                    className={cn(
-                      "mb-4 p-4 rounded-xl cursor-pointer transition-all bg-card hover:bg-muted/50",
-                      selectedTask?.id === task.id ? "ring-2 ring-primary/20" : "hover:shadow-sm",
-                      isTaskOverdue && "border-l-4 border-red-500",
-                    )}
-                    onClick={() => setSelectedTask(task)}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={task.assignedTo.avatar || "/placeholder.svg"} alt={task.assignedTo.name} />
-                          <AvatarFallback>{task.assignedTo.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium text-sm">{task.assignedTo.name}</div>
-                          <div className="text-xs text-muted-foreground">{task.category}</div>
+                  {eventGroup.tasks.map((task) => {
+                    const StatusIcon = statusIcons[task.status]
+                    const isTaskOverdue = isOverdue(task.deadline)
+
+                    return (
+                      <motion.div
+                        key={task.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, height: 0, overflow: "hidden" }}
+                        transition={{ duration: 0.2 }}
+                        className={cn(
+                          "mb-4 p-4 rounded-xl cursor-pointer transition-all bg-card hover:bg-muted/50",
+                          selectedTask?.id === task.id ? "ring-2 ring-primary/20" : "hover:shadow-sm",
+                          isTaskOverdue && "border-l-4 border-red-500",
+                        )}
+                        onClick={() => setSelectedTask(task)}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage
+                                src={task.assignedUser?.avatar || "/placeholder.svg"}
+                                alt={task.assignedUser?.name || "User"}
+                              />
+                              <AvatarFallback>{task.assignedUser?.name?.charAt(0) || "U"}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium text-sm">{task.assignedUser?.name || "Non assigné"}</div>
+                              <div className="text-xs text-muted-foreground">{task.category}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge className={cn("text-xs", priorityColors[task.priority])}>
+                              {priorityLabels[task.priority]}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={(e) => toggleStar(task.id, e)}
+                            >
+                              <Star className={cn("h-4 w-4", task.is_starred ? "fill-amber-400 text-amber-400" : "")} />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge className={cn("text-xs", priorityColors[task.priority])}>
-                          {priorityLabels[task.priority]}
-                        </Badge>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => toggleStar(task.id, e)}>
-                          <Star className={cn("h-4 w-4", task.isStarred ? "fill-amber-400 text-amber-400" : "")} />
-                        </Button>
-                      </div>
-                    </div>
 
-                    <h3 className="font-medium mb-2">{task.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{task.description}</p>
+                        <h3 className="font-medium mb-2">{task.title}</h3>
+                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{task.description}</p>
 
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center justify-between text-xs">
-                        <span>Progression</span>
-                        <span>{task.progressPercentage}%</span>
-                      </div>
-                      <Progress value={task.progressPercentage} className="h-1" />
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          <span className={isTaskOverdue ? "text-red-500 font-medium" : ""}>
-                            {new Date(task.deadline).toLocaleDateString("fr-FR")}
-                          </span>
+                        <div className="space-y-2 mb-3">
+                          <div className="flex items-center justify-between text-xs">
+                            <span>Progression</span>
+                            <span>{task.progress_percentage}%</span>
+                          </div>
+                          <Progress value={task.progress_percentage} className="h-1" />
                         </div>
-                        <div className="flex items-center">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {task.actualHours}h/{task.estimatedHours}h
+
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center space-x-3">
+                            <div className="flex items-center">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              <span className={isTaskOverdue ? "text-red-500 font-medium" : ""}>
+                                {new Date(task.deadline).toLocaleDateString("fr-FR")}
+                              </span>
+                            </div>
+                            <div className="flex items-center">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {task.actual_hours}h/{task.estimated_hours}h
+                            </div>
+                          </div>
+                          <Badge className={cn("text-xs flex items-center gap-1", statusColors[task.status])}>
+                            {StatusIcon && React.createElement(StatusIcon, { className: "h-3 w-3" })}
+                            {statusLabels[task.status]}
+                          </Badge>
                         </div>
-                      </div>
-                      <Badge className={cn("text-xs flex items-center gap-1", statusColors[task.status])}>
-                        <StatusIcon className="h-3 w-3" />
-                        {statusLabels[task.status]}
-                      </Badge>
-                    </div>
-                  </motion.div>
-                )
-              })
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              ))
             ) : (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -387,7 +670,6 @@ export default function TasksPage() {
           </AnimatePresence>
         </div>
 
-        {/* Task detail */}
         <AnimatePresence>
           {selectedTask ? (
             <motion.div
@@ -404,7 +686,7 @@ export default function TasksPage() {
                   </Button>
                   <div className="flex items-center space-x-2">
                     <Button variant="ghost" size="icon" onClick={(e) => toggleStar(selectedTask.id, e)}>
-                      <Star className={cn("h-4 w-4", selectedTask.isStarred ? "fill-amber-400 text-amber-400" : "")} />
+                      <Star className={cn("h-4 w-4", selectedTask.is_starred ? "fill-amber-400 text-amber-400" : "")} />
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -417,11 +699,11 @@ export default function TasksPage() {
                           <Edit className="h-4 w-4 mr-2" />
                           Modifier
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateTaskStatus(selectedTask.id, "terminee")}>
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Marquer terminée
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem className="text-destructive" onClick={() => deleteTask(selectedTask.id)}>
                           <Trash2 className="h-4 w-4 mr-2" />
                           Supprimer
                         </DropdownMenuItem>
@@ -433,13 +715,13 @@ export default function TasksPage() {
                 <div className="flex items-center space-x-3 mb-4">
                   <Avatar className="h-12 w-12">
                     <AvatarImage
-                      src={selectedTask.assignedTo.avatar || "/placeholder.svg"}
-                      alt={selectedTask.assignedTo.name}
+                      src={selectedTask.assignedUser?.avatar || "/placeholder.svg"}
+                      alt={selectedTask.assignedUser?.name || "User"}
                     />
-                    <AvatarFallback>{selectedTask.assignedTo.name.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{selectedTask.assignedUser?.name?.charAt(0) || "U"}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-medium">{selectedTask.assignedTo.name}</div>
+                    <div className="font-medium">{selectedTask.assignedUser?.name || "Non assigné"}</div>
                     <div className="text-sm text-muted-foreground">Assigné • {selectedTask.category}</div>
                   </div>
                 </div>
@@ -447,7 +729,8 @@ export default function TasksPage() {
                 <h2 className="text-2xl font-medium mb-2">{selectedTask.title}</h2>
                 <div className="flex items-center space-x-2 mb-4">
                   <Badge className={cn(statusColors[selectedTask.status])}>
-                    {React.createElement(statusIcons[selectedTask.status], { className: "h-3 w-3 mr-1" })}
+                    {statusIcons[selectedTask.status] &&
+                      React.createElement(statusIcons[selectedTask.status], { className: "h-3 w-3 mr-1" })}
                     {statusLabels[selectedTask.status]}
                   </Badge>
                   <Badge className={cn(priorityColors[selectedTask.priority])}>
@@ -475,9 +758,9 @@ export default function TasksPage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span>Avancement</span>
-                        <span className="font-medium">{selectedTask.progressPercentage}%</span>
+                        <span className="font-medium">{selectedTask.progress_percentage}%</span>
                       </div>
-                      <Progress value={selectedTask.progressPercentage} className="h-2" />
+                      <Progress value={selectedTask.progress_percentage} className="h-2" />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -500,7 +783,7 @@ export default function TasksPage() {
                         <Clock className="h-5 w-5 text-muted-foreground" />
                         <div>
                           <div className="font-medium">Temps estimé</div>
-                          <div className="text-sm text-muted-foreground">{selectedTask.estimatedHours}h</div>
+                          <div className="text-sm text-muted-foreground">{selectedTask.estimated_hours}h</div>
                         </div>
                       </div>
 
@@ -508,7 +791,7 @@ export default function TasksPage() {
                         <Clock className="h-5 w-5 text-muted-foreground" />
                         <div>
                           <div className="font-medium">Temps passé</div>
-                          <div className="text-sm text-muted-foreground">{selectedTask.actualHours}h</div>
+                          <div className="text-sm text-muted-foreground">{selectedTask.actual_hours}h</div>
                         </div>
                       </div>
                     </div>
@@ -520,7 +803,7 @@ export default function TasksPage() {
                     <CardTitle className="text-lg">Événement associé</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <h3 className="font-medium">{selectedTask.eventTitle}</h3>
+                    <h3 className="font-medium">{selectedTask.event?.title || "Événement sans nom"}</h3>
                   </CardContent>
                 </Card>
 
@@ -529,7 +812,7 @@ export default function TasksPage() {
                     <Edit className="h-4 w-4 mr-2" />
                     Modifier la tâche
                   </Button>
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={() => updateTaskStatus(selectedTask.id, "terminee")}>
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Marquer terminée
                   </Button>
@@ -546,17 +829,25 @@ export default function TasksPage() {
                 <p className="text-muted-foreground mb-6">
                   Sélectionnez une tâche dans la liste pour voir ses détails et suivre sa progression.
                 </p>
-                
-                  <CreateTaskForm onTaskCreated={() => {/* refresh tasks if needed */}} />
-                
+
+                {showCreateForm ? (
+                  <CreateTaskForm
+                    onTaskCreated={() => {
+                      fetchTasks()
+                      setShowCreateForm(false)
+                    }}
+                  />
+                ) : (
+                  <Button onClick={() => setShowCreateForm(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Créer une tâche
+                  </Button>
+                )}
               </div>
             </div>
           )}
         </AnimatePresence>
       </div>
-
-      {/* Create Task Form - Ajouté ici */}
-      
     </div>
   )
 }
