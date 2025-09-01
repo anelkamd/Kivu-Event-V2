@@ -17,7 +17,8 @@ router.post("/:eventId/register", optionalAuth, registerParticipant)
 router.post("/verify-qr", verifyQRCode)
 
 // Routes protégées (authentification requise)
-router.get("/event/:eventId", protect, getParticipantsByEvent)
+router.get("/event/:eventId", protect, getParticipantsByEvent) // ancienne
+router.get("/:eventId/participants", protect, getParticipantsByEvent) // ✅ nouvelle route RESTful
 router.get("/:participantId", protect, getParticipantById)
 router.put("/:participantId", protect, updateParticipant)
 router.delete("/:participantId", protect, deleteParticipant)

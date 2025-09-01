@@ -10,6 +10,7 @@ import {
   getMyEvents,
   getMyParticipations,
 } from "../controllers/eventController.js"
+import { getParticipantsByEvent } from "../controllers/participant.controller.js"
 import { protect, optionalAuth } from "../middleware/auth.middleware.js"
 import multer from "multer"
 import path from "path"
@@ -51,10 +52,13 @@ router.get("/my/events", protect, getMyEvents) // Mes événements
 router.get("/my/participations", protect, getMyParticipations) // Mes participations
 router.get("/my-events", protect, getMyEvents)
 
-// Routes avec paramètres (doivent être APRÈS les routes spécifiques)
-router.get("/:id", optionalAuth, getEventById) // Détails d'un événement (avec auth optionnelle)
+// ✅ Route participants AVANT ":id"
+router.get("/:id/participants", protect, getParticipantsByEvent)
 
-// Routes protégées
+// Détails d'un événement (avec auth optionnelle)
+router.get("/:id", optionalAuth, getEventById)
+
+// Routes protégées (création, update, suppression)
 router.post("/", protect, upload.single("image"), createEvent) // Créer un événement
 router.post("/create", protect, upload.single("image"), createEvent) // Créer un événement (alias)
 router.get("/", protect, getAllEvents) // Tous les événements (admin/organisateur)

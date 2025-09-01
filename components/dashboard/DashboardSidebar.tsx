@@ -62,13 +62,13 @@ export function Sidebar() {
       icon: CheckSquare,
     },
     {
-      name: "Ressources",
-      href: "/dashboard/resources",
+      name: "Budgests",
+      href: "/dashboard/budgets",
       icon: Package,
     },
     {
-      name: "Modérateurs",
-      href: "/dashboard/moderators",
+      name: "Intervenants",
+      href: "/dashboard/intervenants",
       icon: Shield,
     },
   ]
