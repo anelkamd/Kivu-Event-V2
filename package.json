@@ -80,7 +80,7 @@
     "morgan": "latest",
     "motion": "^12.6.2",
     "multer": "^2.0.2",
-    "mysql2": "^3.14.0",
+    "mysql2": "^3.14.4",
     "next": "15.1.0",
     "next-themes": "latest",
     "nodemailer": "^7.0.5",
